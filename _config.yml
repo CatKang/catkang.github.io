@@ -1,0 +1,28 @@
+permalink: /:year/:month/:day/:title.html
+markdown: kramdown
+pygments: true
+
+kramdown:
+  input: GFM
+
+# 作者信息
+author: 
+  name: 王康
+  email: beijingwangkang@hotmail.com
+  link: http://catkang.github.io/
+  weibo: 
+  github: http://github.com/CatKang
+
+# 站点信息
+title: CatKang的博客 
+description: Out of three sounds he frame, not a fourth sound, but a star
+url: http://catkang.github.io/
+rss_url: /pages/atom.xml
+
+# avatar头像及Favicon
+avatar: http://7u2ho6.com1.z0.glb.clouddn.com/site-avatar.png
+favicon: http://7u2ho6.com1.z0.glb.clouddn.com/site-favicon.ico
+
+# disqus 设置
+disqus:
+  shortname: wangkang
