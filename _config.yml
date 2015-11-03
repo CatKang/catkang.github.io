@@ -1,6 +1,6 @@
 permalink: /:year/:month/:day/:title.html
 markdown: kramdown
-pygments: true
+highlighter: pygments
 
 kramdown:
   input: GFM
@@ -20,8 +20,8 @@ url: http://catkang.github.io/
 rss_url: /pages/atom.xml
 
 # avatar头像及Favicon
-avatar: http://7u2ho6.com1.z0.glb.clouddn.com/site-avatar.png
-favicon: http://7u2ho6.com1.z0.glb.clouddn.com/site-favicon.ico
+avatar: http://ww2.sinaimg.cn/thumbnail/69a9c739jw1exnxgdcu0dj20sg0iz40f.jpg
+favicon: http://ww2.sinaimg.cn/thumbnail/69a9c739jw1exnxgdcu0dj20sg0iz40f.jpg
 
 # disqus 设置
 disqus:
