@@ -266,10 +266,54 @@ def poll_and_notify(self):
 2.  收集器Pollster拉取采样数据；
 3.  发送数据到消息队列。
 
+### 6. **Pollster示例**
+上面介绍了Polling Agent中如何是如何加载Pollster执行数据的收集工作的，也提到了每个Pollster都必须实现两个接口，default_discovery和get_samples。下面以获取image基本信息的ImagePollster为例，看一下具体的实现：
+```python
+class _Base(plugin_base.PollsterBase):
+
+     @property
+     def default_discovery(self):
+         return 'endpoint:%s' % cfg.CONF.service_types.glance
+
+     def get_glance_client(ksclient, endpoint):
+         ...
+    
+     def _get_images(self, ksclient, endpoint):
+         client = self.get_glance_client(ksclient, endpoint)
+         ...
+         return client.images.list(filters={"is_public": None}, **kwargs)
+
+     def _iter_images(self, ksclient, cache, endpoint):
+         key = '%s-images' % endpoint
+         if key not in cache:
+             cache[key] = list(self._get_images(ksclient, endpoint))
+         return iter(cache[key])
+
+     ...
+
+class ImagePollster(_Base):
+    def get_samples(self, manager, cache, resources):
+        for endpoint in resources:
+            for image in self._iter_images(manager.keystone, cache, endpoint):
+                yield sample.Sample(
+                    name='image',
+                    type=sample.TYPE_GAUGE,
+                    unit='image',
+                    ...
+                )
+
+```
+
+### 7. **Discover示例**
+Discover
+
+
+![图1 Central Agent](https://www.gliffy.com/go/publish/image/9349993/L.png)
+
 
 ## 核心实体
 
-#### **AgentManger**
+### **AgentManger**
 - oslo.service 子类；
 - polling agent 的核心实现类；
 - 函数：
@@ -285,7 +329,8 @@ def poll_and_notify(self):
     - self.polling_manager: PollingManager实例，主要用其通过pipeline配置文件封装的source；
     - self.group_prefix：用来计算partition_coordination的group_id。
 
-#### **PollingTask**
+
+### **PollingTask**
 - Polling task for polling samples and notifying
 - 函数：
     - add：向pollstertask中增加pollster；
