@@ -18,8 +18,9 @@ Polling Agent的功能很简单：
 ![图1 Central Agent结构图](http://docs.openstack.org/developer/ceilometer/_images/2-2-collection-poll.png)
 
 站在设计者的角度，要完成上述功能，需要处理的有如下几个基本问题：
+
 1. 怎么执行拉取；
-2. 向哪些服务收集数据；
+2. 向哪些服务拉取数据；
 3. 对于某个服务收集哪些数据以及如何收集。
 
 下面分别针对上述问题依次介绍Ceilometer的实现方式:
@@ -31,13 +32,13 @@ Polling Agent的功能很简单：
     - 负责消息的发送。
 2. **插件形式**：Ceilometer中用定义插件的方式定义多个收集器（Pollster），程序从配置文件中获得需要加载的收集器列表，用插件的形式是一个很好的选择，因为：
     
-    - python对插件的良好支持：[stevedore](http://docs.openstack.org/developer/stevedore/)；
+    - python对插件的良好支持：[stevedore](http://docs.openstack.org/developer/stevedore/)
     - 简化核心逻辑；
     - 方便扩展。
 3.  **共同基类**：数据来源多种多样，针对不同的数据来源获取数据方式各有不同，但他们需要完成同样的的动作，Ceilometer中设计Pollster的共同基类，定义了如下接口，是每个Pollster都是要实现的：
     
-    - 默认获取数据来源的方式：default_discovery；
-    - 拉取数据：get_samples。
+    - 默认获取数据来源的方式：default\_discovery；
+    - 拉取数据：get\_samples。
     
 ## 流程简介
 正是由于上面所说的实现方式使得Polling Agent的核心逻辑变得非常简单，不需要关注具体的数据收集过程，而将自己解放成一个调度管理者，下面将简单介绍其实现逻辑。在此之前为了方便说明，先介绍其中涉及到的角色或组件:
@@ -62,9 +63,9 @@ Polling Agent的功能很简单：
     - 为每个PollingTask建立Timer执行。
 - PollingTask执行：
     
-    - 通过Pollster的default_discovery函数定义，从已加载的资源发现器Discover中选取合适的一个；
+    - 通过Pollster的default\_discovery函数定义，从已加载的资源发现器Discover中选取合适的一个；
     - 调用Discover的discovery函数获取Resource；
-    - 调用Pollster的get_samples函数，从Resource中获得采样数据；
+    - 调用Pollster的get\_samples函数，从Resource中获得采样数据；
     - 发送给消息队列。
 
 ## 代码细节
@@ -93,7 +94,7 @@ def main():
                                                 CONF.pollster_list)).wait()
 ```
 
-- prepare_service中做了一些初始化工作，如初始化日志，加载配置文件等；
+- prepare\_service中做了一些初始化工作，如初始化日志，加载配置文件等；
 - 第二句为核心，配置并启动了manager.AgentManager，进一步了解到主要工作发生在该类的父类中，即base.AgentManger
 
 ### 3. **base.AgentManager 初始化**
@@ -133,10 +134,10 @@ def __init__(self, namespaces, pollster_list, group_prefix=None):
      return self._get_ext_mgr(namespace)
 ```
 
-- 可以看出_extensions函数中通过[stevedore](http://docs.openstack.org/developer/stevedore/)加载了配置文件中的对应namespace下的插件；
+- 可以看出\_extensions函数中通过[stevedore](http://docs.openstack.org/developer/stevedore/)加载了配置文件中的对应namespace下的插件；
 - 初始化过程init中，主要做了两件事情：
     - 加载ceilometer.poll.central下的插件到self.extensions，即上面所说的收集器Pollster；
-    - 加载ceilometer.discover下的插件到self.discovery_manager，即上面所说的资源发现器Discover。
+    - 加载ceilometer.discover下的插件到self.discovery\_manager，即上面所说的资源发现器Discover。
 - 而在配置文件setup.cfg中可以看到对应的定义，截取部分在这里：
 
 ``` yaml
@@ -169,9 +170,9 @@ def start(self):
 ...
 ```
 
-下面分别介绍这两句的功能：
+下面分别介绍这两行代码的功能：
 
-- pipeline.setup_polling中加载解析pipeline.yaml文件，来看一个pipeline.yaml中的示例，更多内容：[pipeline](http://docs.openstack.org/developer/ceilometer/architecture.html#pipeline-manager)；
+- pipeline.setup\_polling中加载解析pipeline.yaml文件，来看一个pipeline.yaml中的示例，更多内容：[pipeline](http://docs.openstack.org/developer/ceilometer/architecture.html#pipeline-manager)；
 
 ``` yaml
 ---
@@ -193,9 +194,9 @@ def start(self):
   ...
 ```
 
-ceilometer中用pipeline配置文件的方式定义meter数据从收集到处理到发送的过程，在Polling Agent中我们只需要关心sources部分，在上述pipeline.setup_polling()中读取pipeline文件并解析封装其中的sources内容，供后面使用。
+ceilometer中用pipeline配置文件的方式定义meter数据从收集到处理到发送的过程，在Polling Agent中我们只需要关心sources部分，在上述pipeline.setup\_polling()中读取pipeline文件并解析封装其中的sources内容，供后面使用。
 
-- configure_polling_tasks代码如下：
+- configure\_polling\_tasks代码如下：
 
 ``` python
 def configure_polling_tasks(self):
@@ -215,11 +216,11 @@ def configure_polling_tasks(self):
     return pollster_timers
 ```
 
-其中，setup_polling_tasks中新建PollingTask，并根据上一步中封装的sources内容，将每一个收集器Pollster分配到不同的PollingTask中。之后每个PollingTask都会设置Timer定时执行。
-注意，其中interval_task函数指定timer需要执行的任务。
+其中，setup\_polling\_tasks中新建PollingTask，并根据上一步中封装的sources内容，将每一个收集器Pollster根据其interval设置分配到不同的PollingTask中，interval相同的收集器会分配到同一个PollingTask中。之后每个PollingTask都根据其运行周期设置Timer定时执行。
+注意，其中interval\_task函数指定timer需要执行的任务。
 
 ### 5. **PollingTask 执行**
-上边我们了解到PollingTask会定时执行，而interval_task中定义了他的内容：
+上边我们了解到PollingTask会定时执行，而interval\_task中定义了他的内容：
 
 ``` python
 @staticmethod
@@ -273,7 +274,7 @@ def poll_and_notify(self):
 3.  发送数据到消息队列。
 
 ### 6. **Pollster示例**
-上面介绍了Polling Agent中如何是如何加载Pollster执行数据的收集工作的，也提到了每个Pollster都必须实现两个接口，default_discovery和get_samples。下面以获取image基本信息的ImagePollster为例，看一下具体的实现：
+上面介绍了Polling Agent中如何是如何加载Pollster执行数据的收集工作的。下面以获取image基本信息的ImagePollster为例，看一下具体的实现：
 
 ``` python
 class _Base(plugin_base.PollsterBase):
@@ -312,8 +313,8 @@ class ImagePollster(_Base):
 ```
 像上边介绍过的，Pollster需要实现两个接口:
 
-- default_discovery：指定默认的discover
-- get_samples：对每个image获取采样数据
+- default\_discovery：指定默认的discover
+- get\_samples：对每个image获取采样数据
 
 ### 7. **Discover示例**
 
@@ -334,11 +335,12 @@ class EndpointDiscovery(plugin.DiscoveryBase):
             return []
         return endpoints
 ```
-可以看到上面的ImagePollster所指定的Discover中慧从keystone获取所有的glance的endpoint列表, 这些endpoint列表最终会传给ImagePollster的get_samples
+可以看到上面的ImagePollster所指定的Discover中慧从keystone获取所有的glance的endpoint列表, 这些endpoint列表最终会作为数据来源传给ImagePollster的get_samples
 
 ### 8. **其他**
 除了上述提到的内容外，还有一些点需要注意：
-- polling agent采用[tooz](http://docs.openstack.org/developer/tooz/)实现了agent的高可用，在base.AgentManager的初始化和运行过程中都有相关处理，其具体实现在ceilometer/coordination.py
+
+- polling agent采用[tooz](http://docs.openstack.org/developer/tooz/)实现了agent的高可用，不同的agent实例之间通过tooz进行通信。在base.AgentManager的初始化和运行过程中都有相关处理，其具体实现可以在ceilometer/coordination.py中看到。；
 - 除了上述动态加载Pollster和Discover的方式外，pipeline还提供的静态的加载方式，可以在pipeline文件中通过sources的resources和discovery参数指定。
 
 
@@ -355,25 +357,25 @@ class EndpointDiscovery(plugin.DiscoveryBase):
     - 定义pollingtask相关函数。
 - 成员
     - self.extensions：从setup.cfg中读入的pollster插件；
-    - self.discovery_manager：从setup.cfg中读入的discover插件；
-    - self.context：oslo_context 的RequestContext；
-    - self.partition_coordinator：用于active-active高可用实现的PartitionCoordinator；
-    - self.notifier：oslo_messaging.Notifier 用于将收集的meter信息发送到消息队列；
-    - self.polling_manager: PollingManager实例，主要用其通过pipeline配置文件封装的source；
-    - self.group_prefix：用来计算partition_coordination的group_id。
+    - self.discover\_manager：从setup.cfg中读入的discover插件；
+    - self.context：oslo\_context 的RequestContext；
+    - self.partition\_coordinator：用于active-active高可用实现的PartitionCoordinator；
+    - self.notifier：oslo\_messaging.Notifier 用于将收集的meter信息发送到消息队列；
+    - self.polling\_manager: PollingManager实例，主要用其通过pipeline配置文件封装的source；
+    - self.group\_prefix：用来计算partition\_coordination的group\_id。
 
 
 ### **PollingTask**
 - Polling task for polling samples and notifying
 - 函数：
     - add：向pollstertask中增加pollster；
-    - poll_and_notify：发现资源，拉取采样数据，将其转化成meter message后发送到消息队列；
+    - poll\_and\_notify：发现资源，拉取采样数据，将其转化成meter message后发送到消息队列；
 - 成员：
-    - self.manager: 记录当前的agent_manager；
-    - self.pollster_matches，value为set类型的dic，用来记录source到pollster set的映射；
-    - self.resources用来记录“source_name-pollster” key 到Resource的映射；
-    - self._batch 是否要批量发送；
-    - self._telemetry_secret : 配置文件中的_telemetry_secret；
+    - self.manager: 记录当前的agent\_manager；
+    - self.pollster\_matches，value为set类型的dic，用来记录source到pollster set的映射；
+    - self.resources用来记录“source\_name-pollster” key 到Resource的映射；
+    - self.\_batch 是否要批量发送；
+    - self.\_telemetry\_secret : 配置文件中的\_telemetry\_secret；
 
 ## 参考
 官方文档：[Ceilometer Architecture](http://docs.openstack.org/developer/ceilometer/architecture.html)
