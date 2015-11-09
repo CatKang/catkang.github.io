@@ -14,6 +14,9 @@ Polling Agent的功能很简单：
 
 > **周期性地向其他服务主动拉取需要的数据，并将数据发送到消息队列。**
 
+其结构图如下：
+![图1 Central Agent结构图](http://docs.openstack.org/developer/ceilometer/_images/2-2-collection-poll.png)
+
 站在设计者的角度，要完成上述功能，需要处理的有如下几个基本问题：
 1. 怎么执行拉取；
 2. 向哪些服务收集数据；
@@ -65,6 +68,9 @@ Polling Agent的功能很简单：
     - 发送给消息队列。
 
 ## 代码细节
+先看一下数据采集的完整过程：
+![图2 Central Agent 序列图](https://www.gliffy.com/go/publish/image/9349993/L.png)
+
 接下来从代码层面详细介绍上述逻辑实现：
 
 ### 1. **入口**
@@ -268,7 +274,8 @@ def poll_and_notify(self):
 
 ### 6. **Pollster示例**
 上面介绍了Polling Agent中如何是如何加载Pollster执行数据的收集工作的，也提到了每个Pollster都必须实现两个接口，default_discovery和get_samples。下面以获取image基本信息的ImagePollster为例，看一下具体的实现：
-```python
+
+``` python
 class _Base(plugin_base.PollsterBase):
 
      @property
@@ -288,9 +295,9 @@ class _Base(plugin_base.PollsterBase):
          if key not in cache:
              cache[key] = list(self._get_images(ksclient, endpoint))
          return iter(cache[key])
+```
 
-     ...
-
+``` python
 class ImagePollster(_Base):
     def get_samples(self, manager, cache, resources):
         for endpoint in resources:
@@ -303,12 +310,38 @@ class ImagePollster(_Base):
                 )
 
 ```
+像上边介绍过的，Pollster需要实现两个接口:
+
+- default_discovery：指定默认的discover
+- get_samples：对每个image获取采样数据
 
 ### 7. **Discover示例**
-Discover
+
+``` python
+class EndpointDiscovery(plugin.DiscoveryBase):
+    """Discovery that supplies service endpoints.
+    """
+
+    @staticmethod
+    def discover(manager, param=None):
+        endpoints = manager.keystone.service_catalog.get_urls(
+            service_type=param,
+            endpoint_type=cfg.CONF.service_credentials.os_endpoint_type,
+            region_name=cfg.CONF.service_credentials.os_region_name)
+        if not endpoints:
+            LOG.warning(_LW('No endpoints found for service %s'),
+                        "<all services>" if param is None else param)
+            return []
+        return endpoints
+```
+可以看到上面的ImagePollster所指定的Discover中慧从keystone获取所有的glance的endpoint列表, 这些endpoint列表最终会传给ImagePollster的get_samples
+
+### 8. **其他**
+除了上述提到的内容外，还有一些点需要注意：
+- polling agent采用[tooz](http://docs.openstack.org/developer/tooz/)实现了agent的高可用，在base.AgentManager的初始化和运行过程中都有相关处理，其具体实现在ceilometer/coordination.py
+- 除了上述动态加载Pollster和Discover的方式外，pipeline还提供的静态的加载方式，可以在pipeline文件中通过sources的resources和discovery参数指定。
 
 
-![图1 Central Agent](https://www.gliffy.com/go/publish/image/9349993/L.png)
 
 
 ## 核心实体
