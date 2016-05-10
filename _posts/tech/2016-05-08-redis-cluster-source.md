@@ -81,9 +81,59 @@ Redis Cluster作为Redis的分布式实现，主要做了方面的事情：
 - ASK，申明的是一种临时的状态，所有权还并没有转移，客户端并不更新其映射关系。前面的加的ASKING命令也是申明其理解当前的这种临时状态
 
 ### 3，状态检测及维护
-Cluster中的每个节点都维护一份在自己看来当前整个集群的状态，当集群状态变化时，如新节点加入、slot迁移、节点宕机、slave提升为新Master，我们希望这些变化尽快的被发现并传播到整个集群的所有节点并达成一致。
+Cluster中的每个节点都维护一份在自己看来当前整个集群的状态，主要包括：
 
-#### 心跳 + Gossip
+- 当前集群状态
+- 集群中各节点所负责的slots信息，及其migrate状态
+- 集群中各节点的master-slave状态
+- 集群中各节点的存活状态及不可达投票
+
+当集群状态变化时，如新节点加入、slot迁移、节点宕机、slave提升为新Master，我们希望这些变化尽快的被发现并传播到整个集群的所有节点并达成一致。节点之间相互的心跳（PING，PONG，MEET）及其携带的数据是集群状态传播最主要的途径。
+
+#### 心跳时机：
+
+Redis节点会记录其向每一个节点上一次发出ping和收到pong的时间，心跳发送时机与这两个值有关。通过下面的方式既能保证及时更新集群状态，又不至于使心跳数过多：
+
+- 每次Cron向所有未建立链接的节点发送ping或meet
+- 每1秒从所有已知节点中随机选取5个，向其中上次收到pong最久远的一个发送ping
+- 每次Cron向收到pong超过timeout/2的节点发送ping
+- 收到ping或meet，立即回复pong
+
+#### 心跳数据
+
+- Header，发送者自己的信息
+	- 所负责slots的信息
+	- 主从信息
+	- ip port信息
+	- 状态信息 
+- Gossip，发送者所了解的部分其他节点的信息
+	- ping_sent, pong_received
+	- ip, port信息
+	- 状态信息，比如发送者认为该节点已经不可达，会在状态信息中标记其为PFAIL或FAIL
+
+#### 心跳处理
+
+- 1，新节点加入
+	- 发送meet包加入集群
+	- 从pong包中的gossip得到未知的其他节点
+	- 循环上述过程，直到最终加入集群
+	
+<img src="/assets/img/2016-05-08/RedisClusterNewNode.png" width="400px" />
+
+- 2，slots信息
+	- 判断发送者声明的slots信息，跟本地记录的是否有不同
+	- 如果不同，且发送者epoch较大，更新本地记录
+	- 如果不同，且发送者epoch小，发送Update信息通知发送者
+- 3，Master slave信息
+	- 发现发送者的master、slave信息变化，更新本地状态
+- 4，节点Fail探测
+	- 超过超时时间仍然没有收到pong包的节点会被当前节点标记为PFAIL
+	- PFAIL标记会随着gossip传播
+	- 每次收到心跳包会检测其中对其他节点的PFAIL标记，当做对该节点FAIL的投票维护在本机
+	- 对某个节点的PFAIL标记达到大多数时，将其变为FAIL标记并广播FAIL消息
+
+> 注：Gossip的存在使得集群状态的改变可以更快的达到整个集群。每个心跳包中会包含多个Gossip包，那么多少个才是合适的呢，redis的选择是N/10，其中N是节点数，这样可以保证在PFAIL投票的过期时间内，节点可以收到80%机器关于失败节点的gossip，从而使其顺利进入FAIL状态。
+
 
 #### 广播
 当需要发布一些非常重要需要立即送达的信息时，上述心跳加Gossip的方式就显得捉襟见肘，这时就需要向所有集群内机器的广播信息，使用广播发的场景：
@@ -93,6 +143,16 @@ Cluster中的每个节点都维护一份在自己看来当前整个集群的状�
 - **新Master信息**：Failover成功的节点向整个集群广播自己的信息
 
 ### 4，故障恢复（Failover）
+当slave发现自己的master变为FAIL状态时，便尝试进行Failover，以期成为新的master。由于挂掉的master可能会有多个slave。Failover的过程需要经过类Raft协议的过程在整个集群内达到一致， 其过程如下：
+
+- slave发现自己的master变为FAIL
+- 将自己记录的集群currentEpoch加1，并广播Failover Request信息
+- 其他节点收到该信息，只有master响应，判断请求者的合法性，并发送FAILOVER_AUTH_ACK，对每一个epoch只发送一次ack
+- 尝试failover的slave收集FAILOVER_AUTH_ACK
+- 超过半数后变成新Master
+- 广播Pong通知其他集群节点
+
+<img src="/assets/img/2016-05-08/RedisClusterFailover.png" width="600px" />
 
 ## 源码
 ### 1，数据结构
