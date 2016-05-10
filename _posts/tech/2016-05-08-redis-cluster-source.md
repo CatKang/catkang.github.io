@@ -120,7 +120,7 @@ Redis节点会记录其向每一个节点上一次发出ping和收到pong的时�
 	- 从pong包中的gossip得到未知的其他节点
 	- 循环上述过程，直到最终加入集群
 	
-<img src="/assets/img/2016-05-08/RedisClusterNewNode.png" width="90%" />
+<img src="/assets/img/2016-05-08/RedisClusterNewNode.png" width="640" height="499" />
 
 - 2，Slots信息
 	- 判断发送者声明的slots信息，跟本地记录的是否有不同
@@ -154,7 +154,7 @@ Redis节点会记录其向每一个节点上一次发出ping和收到pong的时�
 - 超过半数后变成新Master
 - 广播Pong通知其他集群节点
 
-<img src="/assets/img/2016-05-08/RedisClusterFailover.png" width="90%" />
+<img src="/assets/img/2016-05-08/RedisClusterFailover.png" width="821" height="828" />
 
 ## 源码
 
