@@ -6,22 +6,25 @@ tags: [Redis, Redis Cluster, Source]
 keywords: Redis, Redis Cluster, Source
 ---
 
-本文将从设计思路，功能实现，源码几个方面介绍Redis Cluster。假设读者已经了解Redis Cluster的使用方式.
+本文将从设计思路，功能实现，源码几个方面介绍Redis Cluster。假设读者已经了解Redis Cluster的使用方式。
 
 ## **简介**
 Redis Cluster作为Redis的分布式实现，主要做了方面的事情：
+
 #### **1，数据分片**
+
 - Redis Cluster将数据按key，Hash到16384个slot上
 - Cluster中的不同节点负责一部分slot
 
 #### **2，故障恢复**
+
 - Cluster中直接提供服务的节点为Master
 - 每个Master可以有一个或多个Slave
 - 当Master不能提供服务时，Slave会自动FailOver
 
 ## **设计思路**
 
-#### **1，性能为第一目标**
+#### **性能为第一目标**
 
 - 每一次数据处理都是由负责当前slot的Master直接处理的
 
@@ -117,9 +120,9 @@ Redis节点会记录其向每一个节点上一次发出ping和收到pong的时�
 	- 从pong包中的gossip得到未知的其他节点
 	- 循环上述过程，直到最终加入集群
 	
-<img src="/assets/img/2016-05-08/RedisClusterNewNode.png" width="400px" />
+<img src="/assets/img/2016-05-08/RedisClusterNewNode.png" width="90%" />
 
-- 2，slots信息
+- 2，Slots信息
 	- 判断发送者声明的slots信息，跟本地记录的是否有不同
 	- 如果不同，且发送者epoch较大，更新本地记录
 	- 如果不同，且发送者epoch小，发送Update信息通知发送者
@@ -135,7 +138,7 @@ Redis节点会记录其向每一个节点上一次发出ping和收到pong的时�
 
 
 #### **广播**
-当需要发布一些非常重要需要立即送达的信息时，上述心跳加Gossip的方式就显得捉襟见肘，这时就需要向所有集群内机器的广播信息，使用广播发的场景：
+当需要发布一些非常重要需要立即送达的信息时，上述心跳加Gossip的方式就显得捉襟见肘了，这时就需要向所有集群内机器的广播信息，使用广播发的场景：
 
 - **节点的Fail信息**：当发现某一节点不可达时，探测节点会将其标记为PFAIL状态，并通过心跳传播出去。当某一节点发现这个节点的PFAIL超过半数时修改其为FAIL并发起广播。
 - **Failover Request信息**：slave尝试发起FailOver时广播其要求投票的信息
@@ -151,19 +154,63 @@ Redis节点会记录其向每一个节点上一次发出ping和收到pong的时�
 - 超过半数后变成新Master
 - 广播Pong通知其他集群节点
 
-<img src="/assets/img/2016-05-08/RedisClusterFailover.png" width="600px" />
+<img src="/assets/img/2016-05-08/RedisClusterFailover.png" width="90%" />
 
 ## 源码
 
 ### 1，数据结构
 
-### 2，启动过程
+##### clusterState, 从当前节点的视角来看的集群状态，每个节点维护一份
+
+- myself：指针指向自己的clusterNode
+- currentEpoch：当前节点见过的最大epoch，可能在心跳包的处理中更新
+- nodes：当前节点感知到的所有节点，为clusterNode指针数组
+- slots：slot与clusterNode指针映射关系
+- migrating_slots_to, importing_slots_from：记录slots的迁移信息
+- failover_auth_time, failover_auth_count, failover_auth_sent, failover_auth_rank, failover_auth_epoch：Failover相关
+
+##### clusterNode，代表集群中的一个节点
+
+- slots：位图，由当前clusterNode负责的slot为1
+- salve, slaveof：主从关系信息
+- ping_sent, pong_received：心跳包收发时间
+- clusterLink *link：Node间的联接
+- list *fail_reports：收到的节点不可达投票
+
+##### clusterLink，负责处理网络上的一条链接来的内容
+
+### 2，Redis启动过程中与Cluster相关内容
+
+- 初始化或从文件中恢复cluster结构
+- 注册集群间通信消息的处理函数：clusterProcessPacket
+- 增加Cluster相关的Cron函数：clusterCron
 
 ### 3，客户端请求重定向
 
-### 4，定时任务
+- redis处理客户端命令的函数processCommand增加cluster的重定向内容
+- 事务或多key中若落在不同slots，直接返回CLUSTER_REDIR_CROSS_SLOT
+- 如果当前存在于migration状态，且有key不再当前节点，返回CLUSTER_REDIR_ASK
+- 如果当前是import状态且客户端在ASKING状态，则返回可以处理，或者CLUSTER_REDIR_UNSTABLE
+- 如果不是myself，则返回CLUSTER_REDIR_MOVED
 
-### 5，集群消息处理
+
+### 4，定时任务 clusterCron
+
+- 对handshake节点建立Link，发送Ping或Meet
+- 选择合适的clusterNode发送Ping
+- 如果是从查看是否需要做Failover
+- 统计并决定是否进行slave的迁移，来平衡不同master的slave数
+- 判断所有pfail报告数是否过半数
+
+### 5，集群消息处理 clusterProcessPacket
+
+- 根据收到的消息更新自己的epoch和slave的offset信息
+- 处理MEET消息，使加入集群
+- 从goosip中发现未知节点，发起handshake
+- 对PING，MEET回复PONG
+- 根据收到的心跳信息更新自己clusterState中的master-slave，slots信息
+- 对FAILOVER_AUTH_REQUEST消息，检查并投票
+- 处理FAIL，FAILOVER_AUTH_ACK，UPDATE信息
 
 ## 参考
 - Tutorial：[Redis Cluster Tutorial](http://redis.io/topics/cluster-tutorial)
