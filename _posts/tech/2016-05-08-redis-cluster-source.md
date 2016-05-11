@@ -1,9 +1,9 @@
 ---
 layout: post
-title: Redis Cluster
+title: Redis Cluster 实现
 category: 技术
-tags: [Redis, Redis Cluster, Source]
-keywords: Redis, Redis Cluster, Source
+tags: [Redis, Redis Cluster, Source, 源码]
+keywords: Redis, Redis Cluster, Source, 源码
 ---
 
 本文将从设计思路，功能实现，源码几个方面介绍Redis Cluster。假设读者已经了解Redis Cluster的使用方式。
