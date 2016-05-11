@@ -8,7 +8,6 @@ keywords: Ceilometer, Central Agent, Compute Agent, Source
 ## 简介
 Ceilometer是Openstack中用于数据采集的基础设施，包括多个组件：Central Agent，Compute Agent，Notification Agent，Collector等。其中Central Agent和Compute Agent分别运行在Controller和Compute机器上，通过定期调用其他服务的api来完成数据采集。由于二者的区别只是所负责的数据来源，这里我们统称为Polling Agent。
 
-
 ## 需求导向
 Polling Agent的功能很简单：
 

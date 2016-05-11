@@ -9,7 +9,6 @@ keywords: Ceilometer, Notification Agent, Source
 Ceilometer有两种数据收集方式，[Ceilometer 源码学习 - Polling Agent](http://catkang.github.io/2015/11/03/source-ceilometer-polling.html)中提到了主动调用api的Polling方式。显而易见的，这种方式会增加其他组件的负担。所以更优雅也是更推荐的方式是由Notification Agent监听消息队列并收集需要的数据。
 这篇文章就将介绍Notification Agent的功能和实现。
 
-
 ## 需求导向
 一句话来概括Notification Agent的功能：
 
