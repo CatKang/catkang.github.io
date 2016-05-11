@@ -9,24 +9,24 @@ keywords: Redis, Redis Cluster, Source, 源码
 本文将从设计思路，功能实现，源码几个方面介绍Redis Cluster。假设读者已经了解Redis Cluster的使用方式。
 
 ## **简介**
-Redis Cluster作为Redis的分布式实现，主要做了方面的事情：
+Redis Cluster作为Redis的分布式实现，主要做了两个方面的事情：
 
 #### **1，数据分片**
 
-- Redis Cluster将数据按key，Hash到16384个slot上
+- Redis Cluster将数据按key哈希到16384个slot上
 - Cluster中的不同节点负责一部分slot
 
 #### **2，故障恢复**
 
 - Cluster中直接提供服务的节点为Master
 - 每个Master可以有一个或多个Slave
-- 当Master不能提供服务时，Slave会自动FailOver
+- 当Master不能提供服务时，Slave会自动Failover
 
 ## **设计思路**
 
 #### **性能为第一目标**
 
-- 每一次数据处理都是由负责当前slot的Master直接处理的
+- 每一次数据处理都是由负责当前slot的Master直接处理的，没有额外的网络开销
 
 #### **提高可用性**
 
@@ -65,7 +65,7 @@ Redis Cluster作为Redis的分布式实现，主要做了方面的事情：
 
 #### **1)，MOVE**
 
-- ‘我’并不负责‘你’要的key，告’你‘正确的吧。
+- ‘我’并不负责‘你’要的key，告诉’你‘正确的吧。
 - 返回`CLUSTER_REDIR_MOVED`错误，和正确的节点。
 - 客户端向该节点重新发起请求，注意这次依然又发生重定向的可能。
 
@@ -90,7 +90,7 @@ Cluster中的每个节点都维护一份在自己看来当前整个集群的状�
 - 集群中各节点的master-slave状态
 - 集群中各节点的存活状态及不可达投票
 
-当集群状态变化时，如新节点加入、slot迁移、节点宕机、slave提升为新Master，我们希望这些变化尽快的被发现并传播到整个集群的所有节点并达成一致。节点之间相互的心跳（PING，PONG，MEET）及其携带的数据是集群状态传播最主要的途径。
+当集群状态变化时，如新节点加入、slot迁移、节点宕机、slave提升为新Master，我们希望这些变化尽快的被发现，传播到整个集群的所有节点并达成一致。节点之间相互的心跳（PING，PONG，MEET）及其携带的数据是集群状态传播最主要的途径。
 
 #### **心跳时机：**
 
