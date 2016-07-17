@@ -10,7 +10,7 @@ Ceph Monitor集群作为Ceph中的元信息管理组件，基于改进的Paxos�
 
 
 
-## 定位
+## **定位**
 
 RADOS毋庸置疑是Ceph架构中的重中之重，Ceph所提供的对象存储，块存储及文件存储都无一例外的以RADOS为基石和最终的存储方案。论文中将RADOS描述为：”A Scalable, Reliable Storage Service for Petabyte-scaleStorage Clusters“，可见其对扩展性的重视。而与扩展性息息相关的首先就是分布式存储设计中必须要面对的元信息管理问题，即通过key找到数据所在的节点。
 
@@ -36,7 +36,7 @@ RADOS毋庸置疑是Ceph架构中的重中之重，Ceph所提供的对象存储�
 
 
 
-## 任务及数据
+## **任务及数据**
 
 通过上面的描述可知，Montor负责维护整个集群的元信息及其更新，这里的元信息包括：
 
@@ -53,7 +53,8 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-## 一致性与Paxos
+
+## **一致性与Paxos**
 
 上面提到，Monitor以集群的形式对外提供服务。为了使集群能够对外提供一致性的元信息管理服务，Monitor内部基于Paxos实现了自己的一致性算法。我们知道，Paxos论文中只着重介绍了集群如何对某一项提案达成一致，而距离真正的工程实现还有比较大的距离，众多的细节和方案需要实现中考虑和选择。
 
@@ -66,13 +67,13 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-## 实现
+## **实现**
 
 下面将分别从Ceph Monitor的架构，其初始化、选主及读写过程四个阶段介绍Ceph Monitor的实现：
 
-#### 架构
+#### **架构**
 
-![Ceph Monitor Architecture](http://imgur.com/pmj3VAj)
+![Ceph Monitor Architecture](http://i.imgur.com/pmj3VAj.png)
 
 上图所示是Ceph Monitor的结构图，自下而上有以下几个部分组成：
 
@@ -84,9 +85,9 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### 初始化
+#### **初始化**
 
-![Ceph Monitor Initial](http://imgur.com/oPBqw19)
+![Ceph Monitor Initial](http://i.imgur.com/oPBqw19.png)
 
 可以看出，Ceph Monitor在启动节点端，主要做了三件事情：
 
@@ -94,7 +95,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 - 初始化Messager，并向其中注册命令执行回调函数。Messager是Ceph中的网络线程模块，Messager会在收到网络请求后，回调Moniotor在初始化阶段注册命令处理函数。
 - Bootstrap过程在整个Monitor的生命周期中被反复调用，下面就重点介绍一下这个过程。
 
-###### Boostrap
+##### **Boostrap**
 
 - 执行Boostrap的Monitor节点会首先进入PROBING状态，并开始向所有monmap中其他节点发送Probing消息。
 - 收到Probing消息的节点执行Boostrap并回复Probing_ack，并给出自己的last_commit以及first_commit，其中first_commit指示当前机器的commit记录中最早的一条，其存在使得单个节点上可以仅保存最近的几条记录。
@@ -103,30 +104,33 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 上述交互过程见下图：
 
-![Ceph Monitor Boostrap](http://imgur.com/aCN4fig)
+![Ceph Monitor Boostrap](http://i.imgur.com/aCN4fig.png)
 
 可以看出经过了Boostrap过程，可以完成以下两步确认：
 
 - 可以与超过半数的节点通信；
+
 - 节点间commit数据历史差距不大。
 
-
-
-#### 选主
-
-
-
-#### 读写流程
+  ​
 
 
 
-#### 状态
+#### **选主**
+
+
+
+#### **读写流程**
+
+
+
+#### **状态**
 
 
 
 
 
-## 比较
+## **比较**
 
 - 用boostrap来简化实现quroum
 
@@ -140,6 +144,6 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-### 参考：
+### **参考：**
 
 http://www.cnblogs.com/wuhuiyuan/p/4734012.html
