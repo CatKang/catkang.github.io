@@ -2,8 +2,8 @@
 layout: post
 title: Ceph Monitor and Paxos
 category: 技术
-tags: [Ceph, Ceph Monitor, Paxos, 分布式存储, 元信息管理, 一致性协议]
-keywords: Ceph, Ceph Monitor, Paxos, 分布式存储, 元信息管理, 一致性协议
+tags: [Ceph, Ceph Monitor, Paxos, 源码, 实现, 源码介绍, 分布式存储, 元信息管理, 一致性协议]
+keywords: Ceph, Ceph Monitor, Paxos, 源码, 实现, 源码介绍, 分布式存储, 元信息管理, 一致性协议
 ---
 
 Ceph Monitor集群作为Ceph中的元信息管理组件，基于改进的Paxos算法，对外提供一致性的元信息访问和更新服务。本文首先介绍Monitor在整个系统中的意义以及其反映出来的设计思路；之后更进一步介绍Monitor的任务及所维护数据；最后介绍其基于Paxos的实现细节和改进点。
@@ -69,7 +69,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 ## **实现**
 
-下面将分别从Ceph Monitor的架构，其初始化、选主及读写过程四个阶段介绍Ceph Monitor的实现：
+下面将分别从Ceph Monitor的架构，其初始化、选主、Collect过程、读写过程、消息处理、状态转换六个方面介绍Ceph Monitor的实现：
 
 #### **架构**
 
@@ -80,12 +80,12 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 - DBStore层：数据的最终存储组件，以leveldb为例；
 
 
-- Paxos层：在集群上对上层提供一致的数据访问逻辑，在这一层看来所有的数据都是kv；
+- Paxos层：在集群上对上层提供一致的数据访问逻辑，在这一层看来所有的数据都是kv；上层的多中PaxosService将不同的组件的map数据序列化为单条value，公用同一个paxos实例。
 - PaxosService层：每个PaxosService代表集群的一种状态信息。对应的，Ceph Moinitor中包含分别负责OSD Map，Monitor Map, PG Map, CRUSH Map的几种PaxosService。PaxosService负责将自己对应的数据序列化为kv写入Paxos层。Ceph集群所有与Monitor的交互最终都是在调用对应的PaxosSevice功能。
 
 
 
-#### **初始化**
+#### **1，初始化**
 
 ![Ceph Monitor Initial](http://i.imgur.com/oPBqw19.png)
 
@@ -95,7 +95,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 - 初始化Messager，并向其中注册命令执行回调函数。Messager是Ceph中的网络线程模块，Messager会在收到网络请求后，回调Moniotor在初始化阶段注册命令处理函数。
 - Bootstrap过程在整个Monitor的生命周期中被反复调用，下面就重点介绍一下这个过程。
 
-##### **Boostrap**
+**Boostrap**
 
 - 执行Boostrap的Monitor节点会首先进入PROBING状态，并开始向所有monmap中其他节点发送Probing消息。
 - 收到Probing消息的节点执行Boostrap并回复Probing_ack，并给出自己的last_commit以及first_commit，其中first_commit指示当前机器的commit记录中最早的一条，其存在使得单个节点上可以仅保存最近的几条记录。
@@ -106,7 +106,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 ![Ceph Monitor Boostrap](http://i.imgur.com/aCN4fig.png)
 
-可以看出经过了Boostrap过程，可以完成以下两步确认：
+可以看出，经过了Boostrap过程，可以完成以下两步**保证**：
 
 - 可以与超过半数的节点通信；
 
@@ -116,23 +116,59 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### **选主**
+#### **2，选主**
+
+接着，节点进入选主过程：
+
+- 将election_epoch加1，向Monmap中的所有其他节点发送Propose消息；
+- 收到Propose消息的节点进入election状态并仅对有更新的election_epoch且rank值大于自己的消息答复Ack。这里的rank简单的由ip大小决定；
+- 发送Propose的节点统计收到的Ack数，超时时间内收到Monmap中大多数的ack后可进入victory过程，这些发送ack的节点形成quorum；
+
+**victory**
+
+- election_epoch加1，可以看出election_epoch的奇偶可以表示是否在选举轮次；
+- 向quorum中的所有节点发送VICTORY消息，并告知自己的epoch及quorum；
+- 当前节点完成Election，进入Leader状态；
+- 收到VICTORY消息的节点完成Election，进入Peon状态
+
+上述交互过程见下图：
+
+![Ceph Monitor Election](http://i.imgur.com/INz6V5X.png)
+
+可以看出，Monitor选主过程的**目的**如下：
+
+- 简单的根据ip大小选出leader，而并没有考虑commit数据长度；
+- 确定quroum，在此之前所有的操作都是针对Monmap内容的，直到这里才有了quroum，之后的所有Paxos操作便基于当前这个quorum了。
 
 
 
-#### **读写流程**
+#### 3，Collect阶段
 
 
 
-#### **状态**
+#### **4，读写流程**
 
 
+
+#### **5，状态**
+
+
+
+#### 6，**消息处理**
 
 
 
 ## **比较**
 
+- 租约
+
+- 主发起propose
+
 - 用boostrap来简化实现quroum
+
+- 选主只选ip最大的，而在collect过程中才将leader数据更新到最新
+
+  ​
 
 
 
