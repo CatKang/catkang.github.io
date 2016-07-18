@@ -85,7 +85,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### **1，初始化**
+#### **初始化**
 
 ![Ceph Monitor Initial](http://i.imgur.com/oPBqw19.png)
 
@@ -116,7 +116,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### **2，选主**
+#### **选主**
 
 接着，节点进入选主过程：
 
@@ -142,19 +142,19 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### 3，Collect阶段
+#### **Collect阶段**
 
 
 
-#### **4，读写流程**
+#### **读写流程**
 
 
 
-#### **5，状态**
+#### **状态**
 
 
 
-#### 6，**消息处理**
+#### **消息处理**
 
 
 
@@ -182,4 +182,3 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 ### **参考：**
 
-http://www.cnblogs.com/wuhuiyuan/p/4734012.html
