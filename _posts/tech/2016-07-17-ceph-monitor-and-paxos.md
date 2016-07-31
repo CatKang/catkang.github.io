@@ -54,24 +54,15 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-## **一致性与Paxos**
-
-上面提到，Monitor以集群的形式对外提供服务。为了使集群能够对外提供一致性的元信息管理服务，Monitor内部基于Paxos实现了自己的一致性算法。我们知道，Paxos论文中只着重介绍了集群如何对某一项提案达成一致，而距离真正的工程实现还有比较大的距离，众多的细节和方案需要实现中考虑和选择。
-
-- 加入选主阶段，同时只会有一个提案；
-
-- 引入租约，将读压力分散到所有的Monitor节点上，并成就其水平扩展能力。在Ceph Monitor这种读多写少的场景下显得格外有用；
-- 聚合更新，Monitor leader将多条更新信息聚合到单条消息中，使得更新消息的量级与机器规模无关。而能够实现这一点也正是得益于上述的智能存储节点。
-
-本文假设读者已经了解Paxos算法的基本过程，了解Prepare、Promise、Commit、Accept、Quorum等概念。注意Ceph Monitor中的accept概念其实相当于Paxos中的Promise。
-
-
-
 ## **实现**
 
-下面将分别从Ceph Monitor的架构，其初始化、选主、Collect过程、读写过程、消息处理、状态转换六个方面介绍Ceph Monitor的实现：
+上面提到，Monitor以集群的形式对外提供服务。为了使集群能够对外提供一致性的元信息管理服务，Monitor内部基于Paxos实现了自己的一致性算法。我们知道，Paxos论文中只着重介绍了集群如何对某一项提案达成一致，而距离真正的工程实现还有比较大的距离，众多的细节和方案需要实现中考虑和选择。下面就讲分别从Ceph Monitor的架构，其初始化过程、选主过程、Recovery过程、读写过程、状态转换六个方面介绍Ceph Monitor的实现。
 
-#### **架构**
+本章节假设读者已经了解Paxos算法的基本过程，了解Prepare、Promise、Commit、Accept、Quorum等概念。注意Ceph Monitor中的accept概念其实相当于Paxos中的Promise。
+
+
+
+#### **1，架构**
 
 ![Ceph Monitor Architecture](http://i.imgur.com/pmj3VAj.png)
 
@@ -85,7 +76,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### **初始化**
+#### **2，初始化**
 
 ![Ceph Monitor Initial](http://i.imgur.com/oPBqw19.png)
 
@@ -106,7 +97,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 ![Ceph Monitor Boostrap](http://i.imgur.com/aCN4fig.png)
 
-可以看出，经过了Boostrap过程，可以完成以下两步**保证**：
+**目的**：可以看出，经过了Boostrap过程，可以完成以下两步保证：
 
 - 可以与超过半数的节点通信；
 
@@ -116,7 +107,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
-#### **选主**
+#### **3，选主**
 
 接着，节点进入选主过程：
 
@@ -135,41 +126,96 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 ![Ceph Monitor Election](http://i.imgur.com/INz6V5X.png)
 
-可以看出，Monitor选主过程的**目的**如下：
+**目的**：可以看出，Monitor选主过程的目的如下：
 
 - 简单的根据ip大小选出leader，而并没有考虑commit数据长度；
 - 确定quroum，在此之前所有的操作都是针对Monmap内容的，直到这里才有了quroum，之后的所有Paxos操作便基于当前这个quorum了。
 
 
 
-#### **Collect阶段**
+#### **4，RECOVERY阶段**
+
+经过了上述的选主阶段，便确定了leader，peon角色，以及quorum成员。在真正的开始一致性读写之前，还需要经过RECOVERY阶段：
+
+- leader生成新的更大的新的pn，并通过collect消息发送给所有的quorum中成员；
+- 收到collect消息的节点当pn大于自己已经accept的最大pn时，接受并通过last消息返回自己的commit位置及uncommitted；
+- leader收到last消息，更新自己的commit位置及数据并重复提升pn发送collect消息的过程，指导quorum中所有的节点都接受自己。
+- 同时leader会根据的commit及uncommitted位置，分别用commit消息和begin消息更新对应的peon；
+- leader向quorum中所有节点发送lease消息，使整个集群进入active状态。
+
+这个阶段的交互过程如下图：
+
+![Ceph Monitor Collect](http://i.imgur.com/4EsQ1xe.png)
+
+**目的**：
+
+- 将leader及quorum节点的数据更新到最新且一致；
+- 整个集群进入可用状态。
 
 
 
-#### **读写流程**
+#### **5，读写流程**
+
+经过了上面的初始化、选主、恢复阶段整个集群进入到一个非常正常的状况，终于可以利用Paxos进行一致性地读写了，其中读过程比较简单，在lease内的所有quroum均可以提供服务。而所有的写都会转发给leader，写过程如下：
+
+- leader在本地记录要提交的value，并向quroum中的所有节点发送begin消息，其中携带了要提交的value, accept_pn及last_commit；
+- peon收到begin消息，如果accept过更高的pn则忽略，否则将value写入db并返回accept消息。同时peon会将当前的lease过期掉，在下一次收到lease前不再提供服务；
+- leader收到**全部**quorum的accept后进行commit。本地commit后向所有quorum节点发送commit消息；
+- peon收到commit消息，本地commit数据；
+- leader通过lease消息将整个集群带入到active状态。
+
+交互过程如下：
+
+![Ceph Monitor Write](http://i.imgur.com/WnE9Jg1.png)
 
 
 
-#### **状态**
+**目的**：
+
+- 由leader发起propose，并依次完成写入，一个value完成commit才会开始下一个；
+- 通过lease分担读压力。
+
+> 数据存储：我们知道commit以后的数据才算真正写入到集群，那么为什么在begin过程中，leader和peon都会将数据写入db呢？这是因为Ceph Montor利用db来完成了log和value两部分数据的存储，而commit时会将log数据反序列化后以value的格式重新存储到db。
 
 
 
-#### **消息处理**
+#### **6，状态**
+
+在Monitor的生命周期，贯穿于上述各个过程的包括两个层面的状态转换，Monitor自身的状态，以及Monitor进入主从状态后，其Paxos过程中的状态。
+
+##### **Monitor状态转换**
+
+![Ceph Monitor Status](http://i.imgur.com/VmofRlH.png)
+
+- STATE_PROBING：boostrap过程中节点间相互探测，发现数据差距；
+- STATE_SYNCHRONIZING：当数据差距较大无法通过后续机制补齐时，进行全同步；
+- STATE_ELECTING：Monitor在进行选主
+- STATE_LEADER：当前Monitor成为leader
+- STATE_PEON：非leader节点
 
 
 
-## **比较**
+##### **Paxos状态转换**
 
-- 租约
+![Ceph Monitor Paxos Status](http://i.imgur.com/cWYaq0h.png)
 
-- 主发起propose
+- STATE_RECOVERING：对应上述RECOVERING过程；
+- STATE_ACTIVE：leader可以读写或peon拥有lease；
+- STATE_UPDATING（STATE_UPDATING_PREVIOUS）：向quroum发送begin，等待accept；
+- STATE_WRITING（STATE_WRITING_PREVIOUS）：收到accept
+- STATE_REFRESH：本地提交并向quorum发送commit；
 
-- 用boostrap来简化实现quroum
 
-- 选主只选ip最大的，而在collect过程中才将leader数据更新到最新
 
-  ​
+## **一致性与Paxos**
 
+可以看出Ceph Monitor的Paxos实现版本中有许多自己的选择和权衡，总结如下：
+
+- **租约**：将读压力分散到所有的Monitor节点上，并成就其水平扩展能力。在Ceph Monitor这种读多写少的场景下显得格外有用；
+- **主发起propose**：只有leader可以发起propose，并且每次一个值；
+- **用boostrap来简化实现quroum**：所有paxos过程都是针对quorum所有节点的，需要quorum正常答复。任何错误或节点加入退出，都将导致重新的boostrap。这样，Monitor很大的简化了Paxos的实现，但在quroum变动时会有较大不必要的开销。考虑到quroum变动相对于读写操作非常少见，因此这种选择也不失明智。
+- **选主只选ip最大的**：而在collect过程中才将leader数据更新到最新。将选主和数据更新分解到两个阶段。
+- **聚合更新**: 除维护Monitor自身元数据的MonmapMonitor外，其他PaxosService的写操作均会积累一段时间，合并到一条更新数据中。从而降低对Monitor集群的更新压力，当然可以这么做得益于更智能的OSD节点，他们之间会发现元数据的不一致并相互更新。
 
 
 
@@ -181,4 +227,18 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 ### **参考：**
+
+RADOS: A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: http://ceph.com/papers/weil-rados-pdsw07.pdf
+
+CEPH: RELIABLE, SCALABLE, AND HIGH-PERFORMANCE DISTRIBUTED STORAGE: http://ceph.com/papers/weil-thesis.pdf
+
+SOURCE CODE: https://github.com/ceph/ceph
+
+分布式存储系统之元数据管理的思考: http://www.cnblogs.com/wuhuiyuan/p/4734012.html
+
+CEPH ARCHITECTURE: http://docs.ceph.com/docs/master/architecture/
+
+
+
+
 
