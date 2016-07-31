@@ -228,15 +228,15 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 ### **参考：**
 
-RADOS: A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters: http://ceph.com/papers/weil-rados-pdsw07.pdf
+[RADOS: A Scalable, Reliable Storage Service for Petabyte-scale Storage Clusters](http://ceph.com/papers/weil-rados-pdsw07.pdf)
 
-CEPH: RELIABLE, SCALABLE, AND HIGH-PERFORMANCE DISTRIBUTED STORAGE: http://ceph.com/papers/weil-thesis.pdf
+[CEPH: RELIABLE, SCALABLE, AND HIGH-PERFORMANCE DISTRIBUTED STORAGE](http://ceph.com/papers/weil-thesis.pdf)
 
-SOURCE CODE: https://github.com/ceph/ceph
+[SOURCE CODE](https://github.com/ceph/ceph)
 
-分布式存储系统之元数据管理的思考: http://www.cnblogs.com/wuhuiyuan/p/4734012.html
+[分布式存储系统之元数据管理的思考](http://www.cnblogs.com/wuhuiyuan/p/4734012.html)
 
-CEPH ARCHITECTURE: http://docs.ceph.com/docs/master/architecture/
+[CEPH ARCHITECTURE](http://docs.ceph.com/docs/master/architecture)
 
 
 
