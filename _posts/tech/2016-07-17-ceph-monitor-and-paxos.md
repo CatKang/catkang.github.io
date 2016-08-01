@@ -76,6 +76,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
+
 #### **2，初始化**
 
 ![Ceph Monitor Initial](http://i.imgur.com/oPBqw19.png)
@@ -133,14 +134,15 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 
 
+
 #### **4，RECOVERY阶段**
 
 经过了上述的选主阶段，便确定了leader，peon角色，以及quorum成员。在真正的开始一致性读写之前，还需要经过RECOVERY阶段：
 
 - leader生成新的更大的新的pn，并通过collect消息发送给所有的quorum中成员；
 - 收到collect消息的节点当pn大于自己已经accept的最大pn时，接受并通过last消息返回自己的commit位置及uncommitted；
-- leader收到last消息，更新自己的commit位置及数据并重复提升pn发送collect消息的过程，指导quorum中所有的节点都接受自己。
-- 同时leader会根据的commit及uncommitted位置，分别用commit消息和begin消息更新对应的peon；
+- leader收到last消息，更新自己的commit位置及数据，并重复提升pn发送collect消息的过程，直到quorum中所有的节点都接受自己。
+- 同时leader会根据收到的commit及uncommitted位置，分别用commit消息和begin消息更新对应的peon；
 - leader向quorum中所有节点发送lease消息，使整个集群进入active状态。
 
 这个阶段的交互过程如下图：
@@ -151,6 +153,7 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 - 将leader及quorum节点的数据更新到最新且一致；
 - 整个集群进入可用状态。
+
 
 
 
@@ -174,6 +177,8 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 
 - 由leader发起propose，并依次完成写入，一个value完成commit才会开始下一个；
 - 通过lease分担读压力。
+
+
 
 > 数据存储：我们知道commit以后的数据才算真正写入到集群，那么为什么在begin过程中，leader和peon都会将数据写入db呢？这是因为Ceph Montor利用db来完成了log和value两部分数据的存储，而commit时会将log数据反序列化后以value的格式重新存储到db。
 
@@ -204,6 +209,9 @@ Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor
 - STATE_UPDATING（STATE_UPDATING_PREVIOUS）：向quroum发送begin，等待accept；
 - STATE_WRITING（STATE_WRITING_PREVIOUS）：收到accept
 - STATE_REFRESH：本地提交并向quorum发送commit；
+
+
+
 
 
 
