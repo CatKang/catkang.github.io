@@ -67,14 +67,14 @@ Ceph Monitor的结构如上图所示，总体上分为PaxosService、Paxos、Lev
 - 选出leader，简单的根据彼此的ip来进行投票，并没有考虑数据长度
 - 确定quroum：在此之前所有的操作都是针对所有monitor节点的，直到这里才有了quroum，之后的所有Paxos操作便基于当前这个quorum了。
 
-#### **Recovery过程：**
+#### **Recovery阶段：**
 
 在这一过程中，刚选出的leader收集quorum当前的commit位置，并更新整个集群。
 
 - 集群信息一致并更新到最新
 - 集群可用
 
-#### **读写过程：**
+#### **读写阶段：**
 
 - leader通过两阶段提交完成数据提交，并更新follower的租约。
 - 在租约内的所有follower可以对外处理读请求。
