@@ -38,7 +38,7 @@ RADOS毋庸置疑是Ceph架构中的重中之重，Ceph所提供的对象存储�
 
 ## **任务及数据**
 
-通过上面的描述可知，Montor负责维护整个集群的元信息及其更新，这里的元信息包括OSDMap及MonitorMap在内的整个Ceph集群的需要的信息。Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor作为中心节点的负担，所以Monitor需要介入的场景并不太多，主要集中在以下几点：
+通过上面的描述可知，Montor负责维护整个集群的元信息及其更新，这里的元信息包括记录数据分布的OSDMap，记录Monitor状态的MonitorMap，以及Ceph集群所需要的其他信息。Ceph的设计思路是尽可能由更“智能”的OSD及Cilent来降低Monitor作为中心节点的负担，所以Monitor需要介入的场景并不太多，主要集中在以下几点：
 
 - Client首次访问数据需要从Monitor获取当前的集群状态和CRUSH信息；
 - 发生故障时，OSD节点自己或者依靠同伴向Monitor报告故障信息；
@@ -51,9 +51,7 @@ RADOS毋庸置疑是Ceph架构中的重中之重，Ceph所提供的对象存储�
 
 ![Ceph Monitor Architecture](http://i.imgur.com/pmj3VAj.png)
 
-Ceph Monitor的结构如上图所示，总体上分为PaxosService、Paxos、Leveldb三层，其中PaxosService层将不同的元信息封装成单条kv，Leveldb层则作为最终的数据和log存储。
-
-本文的关注重点在Paxos层，Paxos层对上层提供一致性的数据访问逻辑，在其看来所有的数据都是kv，上层的不同的元信息在这里共用同一个Paxos实例。基于Paxos算法，通过一系列的节点间通信来实现集群间一致性的读写以及故障检测和恢复。Paxos将整个过程分解为多个阶段，每个阶段达成一定的目的进而进入不同的状态。通过分层的思路使得整个实现相对简单清晰。
+Ceph Monitor的结构如上图所示，总体上分为PaxosService、Paxos、Leveldb三层，其中PaxosService层将不同的元信息封装成单条kv，Leveldb层则作为最终的数据和log存储。本文的关注重点在Paxos层，Paxos层对上层提供一致性的数据访问逻辑，在其看来所有的数据都是kv，上层的不同的元信息在这里共用同一个Paxos实例。基于Paxos算法，通过一系列的节点间通信来实现集群间一致性的读写以及故障检测和恢复。Paxos将整个过程分解为多个阶段，每个阶段达成一定的目的进而进入不同的状态。通过分层的思路使得整个实现相对简单清晰。
 
 #### **Boostrap阶段：**
 
@@ -64,20 +62,22 @@ Ceph Monitor的结构如上图所示，总体上分为PaxosService、Paxos、Lev
 
 #### **选主阶段：**
 
-- 选出leader，简单的根据彼此的ip来进行投票，并没有考虑数据长度
-- 确定quroum：在此之前所有的操作都是针对所有monitor节点的，直到这里才有了quroum，之后的所有Paxos操作便基于当前这个quorum了。
+- 选出Leader，简单的根据彼此的ip来进行投票，并没有考虑数据长度
+- 确定Quorum：即大多数，在此之前所有的操作都是针对MonitorMap中所有Monitor节点的，直到这里才有了Quorum，之后的所有Paxos操作便基于当前这个Quorum了。
 
 #### **Recovery阶段：**
 
-在这一过程中，刚选出的leader收集quorum当前的commit位置，并更新整个集群。
+在这一过程中，刚选出的Leader收集Quorum当前的Commit位置，并更新整个集群。
 
 - 集群信息一致并更新到最新
 - 集群可用
 
 #### **读写阶段：**
 
-- leader通过两阶段提交完成数据提交，并更新follower的租约。
-- 在租约内的所有follower可以对外处理读请求。
+- Leader通过两阶段提交完成数据提交，并更新Follower的租约。
+- 在租约内的所有Follower可以对外处理读请求。
+
+
 
 
 
@@ -85,11 +85,11 @@ Ceph Monitor的结构如上图所示，总体上分为PaxosService、Paxos、Lev
 
 为了使集群能够对外提供一致性的元信息管理服务，Monitor内部基于Paxos实现了自己的一致性算法。我们知道，Paxos论文中只着重介绍了集群如何对某一项提案达成一致，而距离真正的工程实现还有比较大的距离，众多的细节和方案需要实现中考虑和选择。通过上述对实现的简述，可以看出Ceph Monitor的Paxos实现版本中有许多自己的选择和权衡，总结如下：
 
-- **用boostrap来简化实现Quroum**：与很多其他的一致性协议实现不同，Ceph Monitor的Quroum是在选主过程结束后就已经确定了的，之后所有paxos过程都是针对这个Quorum中的节点，需要收到全部答复。任何错误或节点加入退出，都将导致重新的boostrap过程。这样，Monitor很大的简化了Paxos的实现，但在Quroum变动时会有较大不必要的开销。考虑到quroum变动相对于读写操作非常少见，因此这种选择也不失明智。
-- **仅依据ip选主**：而在collect过程中才将leader数据更新到最新。将选主和数据更新分解到两个阶段。
-- **主发起propose**：只有leader可以发起propose，并且每次一个值；
+- **用Boostrap来简化实现Quorum**：与很多其他的一致性协议实现不同，Ceph Monitor的Quorum是在选主过程结束后就已经确定了的，之后所有Paxos过程都是针对这个Quorum中的节点，需要收到全部答复。任何错误或节点加入退出，都将导致重新的Boostrap过程。这样，Monitor很大的简化了Paxos的实现，但在Quorum变动时会有较大不必要的开销。考虑到Quorum变动相对于读写操作非常少见，因此这种选择也不失明智。
+- **仅依据ip选主**：而在Recovery过程中才将Leader数据更新到最新。将选主和数据更新分解到两个阶段。
+- **主发起propose**：只有Leader可以发起Propose，并且每次一个值；
 - **租约**：将读压力分散到所有的Monitor节点上，并成就其水平扩展能力。在Ceph Monitor这种读多写少的场景下显得格外有用；
-- **聚合更新**: 除维护Monitor自身元数据的MonmapMonitor外，其他PaxosService的写操作均会积累一段时间，合并到一条更新数据中。从而降低对Monitor集群的更新压力，当然可以这么做得益于更智能的OSD节点，他们之间会发现元数据的不一致并相互更新。
+- **聚合更新**: 除维护Monitor自身元数据的MonitorMap外，其他PaxosService的写操作均会积累一段时间，合并到一条更新数据中。从而降低对Monitor集群的更新压力，当然可以这么做得益于更智能的OSD节点，他们之间会发现元数据的不一致并相互更新。
 
 
 本文重点介绍了Ceph Monitor的Paxos实现选择，并简要介绍了其实现阶段和目的。更详细的实现过程请见下一篇博文：[Ceph Monitor实现]()
