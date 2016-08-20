@@ -92,7 +92,7 @@ Ceph Monitor的结构如上图所示，总体上分为PaxosService、Paxos、Lev
 - **聚合更新**: 除维护Monitor自身元数据的MonitorMap外，其他PaxosService的写操作均会积累一段时间，合并到一条更新数据中。从而降低对Monitor集群的更新压力，当然可以这么做得益于更智能的OSD节点，他们之间会发现元数据的不一致并相互更新。
 
 
-本文重点介绍了Ceph Monitor的Paxos实现选择，并简要介绍了其实现阶段和目的。更详细的实现过程请见下一篇博文：[Ceph Monitor实现]()
+本文重点介绍了Ceph Monitor的Paxos实现选择，并简要介绍了其实现阶段和目的。更详细的实现过程请见下一篇博文：[Ceph Monitor实现](http://catkang.github.io/2016/08/20/ceph-monitor-implementation.html)
 
 
 
