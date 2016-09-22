@@ -67,7 +67,7 @@ Ceph作为有中心的分布式结构，元信息的维护和更新自然的都�
 - Monitor收到消息，回复MSG_PGSTATSACK，并记录心跳时间到last_osd_report。
 - Monitor周期性的检查所有OSD的last_osd_report，发现失效的节点，并标记为Down。
 
-> 参数：
+> **参数：**
 >
 > mon_osd_report_timeout(900)：多久没有收到osd的汇报，Monitor会将其标记为Down；
 >
@@ -86,7 +86,6 @@ Ceph作为有中心的分布式结构，元信息的维护和更新自然的都�
 - **容忍网络抖动**：Monitor收到OSD对其伙伴OSD的汇报后，并没有马上将目标OSD下线，而是周期性的等待几个条件：1，目标OSD的失效时间大于通过固定量osd_heartbeat_grace和历史网络条件动态确定的阈值；2，来自不同主机的汇报达到mon_osd_min_down_reporters。3，满足前两个条件前失效汇报没有被源OSD取消。
 - **扩散**：作为中心节点的Monitor并没有在更新OSDMap后尝试广播通知所有的OSD和Client，而是惰性的等待OSD和Client来获取。以此来减少Monitor压力并简化交互逻辑。
 
-####  
 
 ## **参考**
 
