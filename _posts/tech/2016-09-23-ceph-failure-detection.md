@@ -1,12 +1,12 @@
 ---
 layout: post
-title: 从Ceph看分布式系统存活检测
+title: 从Ceph看分布式系统故障检测
 category: 技术
-tags: [Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心跳]
-keywords: Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心跳
+tags: [Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心跳, 故障检测]
+keywords: Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心跳, 故障检测
 ---
 
-节点的存活检测是分布式系统无法回避的问题，集群需要感知节点的存活，并作出适当的调整。通常我们采用心跳的方式来进行存活检测，并认为能正常与外界保持心跳的节点便能够正常提供服务。一个好的存活检测策略应该能够做到：
+节点的故障检测是分布式系统无法回避的问题，集群需要感知节点的存活，并作出适当的调整。通常我们采用心跳的方式来进行故障检测，并认为能正常与外界保持心跳的节点便能够正常提供服务。一个好的故障检测策略应该能够做到：
 
 - **及时**：节点发生异常如宕机或网络中断时，集群可以在可接受的时间范围内感知；
 - **适当的压力**：包括对节点的压力，和对网络的压力；
@@ -17,9 +17,9 @@ keywords: Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心
 
 
 
-## **Ceph存活检测机制**
+## **Ceph故障检测机制**
 
-Ceph作为有中心的分布式结构，元信息的维护和更新自然的都由其中心节点Ceph Monitor来负责。节点的存活状态发生改变时，也需要Monitor来发现并更新元信息并通知给所有的OSD节点。最自然的，我们可以想到让中心节点Monitor保持与所有OSD节点之间频繁的心跳，但如此一来，当有成百上千的OSD节点时Monitor变会有比较大的压力。之前在[Ceph Monitor and Paxos](http://catkang.github.io/2016/07/17/ceph-monitor-and-paxos.html)中介绍过Ceph的设计思路是通过更智能的OSD和Client来减少对中心节点Monitor的压力。同样的，在节点的存活检测方面也需要OSD和Monitor的配合完成。下面的介绍基于当前最新的11.0.0版本。
+Ceph作为有中心的分布式结构，元信息的维护和更新自然的都由其中心节点Ceph Monitor来负责。节点的存活状态发生改变时，也需要Monitor来发现并更新元信息并通知给所有的OSD节点。最自然的，我们可以想到让中心节点Monitor保持与所有OSD节点之间频繁的心跳，但如此一来，当有成百上千的OSD节点时Monitor变会有比较大的压力。之前在[Ceph Monitor and Paxos](http://catkang.github.io/2016/07/17/ceph-monitor-and-paxos.html)中介绍过Ceph的设计思路是通过更智能的OSD和Client来减少对中心节点Monitor的压力。同样的，在节点的故障检测方面也需要OSD和Monitor的配合完成。下面的介绍基于当前最新的11.0.0版本。
 
 
 
@@ -79,10 +79,10 @@ Ceph作为有中心的分布式结构，元信息的维护和更新自然的都�
 
 ## **总结**
 
-可以看出，Ceph中可以通过伙伴OSD汇报失效节点和Monitor统计来自OSD的心跳两种方式发现OSD节点失效。回到在文章开头提到的一个合格的存活检测机制需要做到的几点，结合Ceph的实现方式来理解其设计思路。
+可以看出，Ceph中可以通过伙伴OSD汇报失效节点和Monitor统计来自OSD的心跳两种方式发现OSD节点失效。回到在文章开头提到的一个合格的故障检测机制需要做到的几点，结合Ceph的实现方式来理解其设计思路。
 
 - **及时**：伙伴OSD可以在秒级发现节点失效并汇报Monitor，并在几分钟内由Monitor将失效OSD下线。当然，由于Ceph对一致性的要求，这个过程中客户端写入会不可避免的被阻塞；
-- **适当的压力**：由于有伙伴OSD汇报机制，Monitor与OSD之间的心跳统计更像是一种保险措施，因此OSD向Monitor发送心跳的间隔可以长达600秒，Monitor的检测阈值也可以长达900秒。Ceph实际上市将存活检测过程中中心节点的压力分散到所有的OSD上，以此提高中心节点Monitor的可靠性，进而提高整个集群的可扩展性；
+- **适当的压力**：由于有伙伴OSD汇报机制，Monitor与OSD之间的心跳统计更像是一种保险措施，因此OSD向Monitor发送心跳的间隔可以长达600秒，Monitor的检测阈值也可以长达900秒。Ceph实际上是将故障检测过程中中心节点的压力分散到所有的OSD上，以此提高中心节点Monitor的可靠性，进而提高整个集群的可扩展性；
 - **容忍网络抖动**：Monitor收到OSD对其伙伴OSD的汇报后，并没有马上将目标OSD下线，而是周期性的等待几个条件：1，目标OSD的失效时间大于通过固定量osd_heartbeat_grace和历史网络条件动态确定的阈值；2，来自不同主机的汇报达到mon_osd_min_down_reporters。3，满足前两个条件前失效汇报没有被源OSD取消。
 - **扩散**：作为中心节点的Monitor并没有在更新OSDMap后尝试广播通知所有的OSD和Client，而是惰性的等待OSD和Client来获取。以此来减少Monitor压力并简化交互逻辑。
 
