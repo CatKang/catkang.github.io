@@ -22,21 +22,18 @@ LevelDB的数据是存储在磁盘上的，采用LSM-Tree的结构实现。LSM-T
 
 具体到代码实现上，LevelDB有几个重要的角色，包括对应于上文提到的内存数据的Memtable，分层数据存储的SST文件，版本控制的Manifest、Current文件，以及写Memtable前的WAL。这里简单介绍各个组件的作用和在整个结构中的位置，更详细的介绍将在之后的博客中进行。
 
-- Memtable：内存数据结构，跳表实现，新的数据会首先写入这里；
+- **Memtable：**内存数据结构，跳表实现，新的数据会首先写入这里；
 
-- Log文件：写Memtable前会先写Log文件，Log通过append的方式顺序写入。Log的存在使得机器宕机导致的内存数据丢失得以恢复；
+- **Log文件：**写Memtable前会先写Log文件，Log通过append的方式顺序写入。Log的存在使得机器宕机导致的内存数据丢失得以恢复；
 
-- Immutable Memtable：达到Memtable设置的容量上限后，Memtable会变为Immutable为之后向SST文件的归并做准备，顾名思义，Immutable Mumtable不再接受用户写入，同时会有新的Memtable生成；
+- **Immutable Memtable：**达到Memtable设置的容量上限后，Memtable会变为Immutable为之后向SST文件的归并做准备，顾名思义，Immutable Mumtable不再接受用户写入，同时会有新的Memtable生成；
 
-- SST文件：磁盘数据存储文件。分为Level 0到Level N多层，每一层包含多个SST文件；单个SST文件容量随层次增加成倍增长；文件内数据有序；其中Level0的SST文件由Immutable直接Dump产生，其他Level的SST文件由其上一层的文件和本层文件归并产生；SST文件在归并过程中顺序写生成，生成后仅可能在之后的归并中被删除，而不会有任何的修改操作。
+- **SST文件：**磁盘数据存储文件。分为Level 0到Level N多层，每一层包含多个SST文件；单个SST文件容量随层次增加成倍增长；文件内数据有序；其中Level0的SST文件由Immutable直接Dump产生，其他Level的SST文件由其上一层的文件和本层文件归并产生；SST文件在归并过程中顺序写生成，生成后仅可能在之后的归并中被删除，而不会有任何的修改操作。
 
-- Manifest文件：
+- **Manifest文件：** Manifest文件中记录SST文件在不同Level的分布，单个SST文件的最大最小key，以及其他一些LevelDB需要的元信息。
 
-  Manifest文件中记录SST文件在不同Level的分布，单个SST文件的最大最小key，以及其他一些LevelDB需要的元信息。
+- **Current文件:** 从上面的介绍可以看出，LevelDB启动时的首要任务就是找到当前的Manifest，而Manifest可能有多个。Current文件简单的记录了当前Manifest的文件名，从而让这个过程变得非常简单。
 
-- Current文件:
-
-  从上面的介绍可以看出，LevelDB启动时的首要任务就是找到当前的Manifest，而Manifest可能有多个。Current文件简单的记录了当前Manifest的文件名，从而让这个过程变得非常简单。
 
 ![LevelDB 结构](http://i.imgur.com/wGc3c2J.png)
 
@@ -108,7 +105,7 @@ SST文件的Compaction可以由用户通过接口手动发起，也可以自动�
 
 ## **总结**
 
-通过对LevelDB设计思路，整体结构以及其工作过程的介绍。相信已经对LevelDB有一个整体的印象。接下来还将用几篇博客，更深入的介绍LevelDB的数据存储，版本控制，迭代器，缓存等方面的设计和实现。
+通过对LevelDB设计思路，整体结构以及其工作过程的介绍。相信已经对LevelDB有一个整体的印象。接下来还将用几篇博客，更深入的介绍LevelDB的数据管理，版本控制，迭代器，缓存等方面的设计和实现。
 
 
 
