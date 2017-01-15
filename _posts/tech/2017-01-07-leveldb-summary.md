@@ -2,8 +2,8 @@
 layout: post
 title: 庖丁解LevelDB之概览
 category: 技术
-tags: [leveldb, nosql，存储引擎，源码，source code]
-keywords: leveldb，nosql，存储引擎，源码，source code
+tags: [leveldb, nosql，存储引擎，源码，source code, 介绍，概述]
+keywords: leveldb，nosql，存储引擎，源码，source code，介绍，概述
 ---
 
 LevelDB是Google传奇工程师Jeff Dean和Sanjay Ghemawat开源的KV存储引擎，无论从设计还是代码上都可以用精致优雅来形容，非常值得细细品味。接下来就将用几篇博客来由表及里的介绍LevelDB的设计和代码细节。本文将从设计思路、整体结构、读写流程、压缩流程几个方面来进行介绍，从而能够对LevelDB有一个整体的感知。
