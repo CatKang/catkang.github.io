@@ -21,7 +21,7 @@ Memtable对应Leveldb中的内存数据，LevelDB的写入操作会直接将数�
 
 LevelDB采用跳表SkipList实现，在给提供了O(logn)的时间复杂度的同时，又非常的易于实现：
 
-TODO SkipList图
+![跳表](http://i.imgur.com/1TZ97zy.png)
 
 SkipList中单条数据存放一条Key-Value数据，定义为：
 
@@ -46,7 +46,7 @@ KeyString := KeyLength + Key
 
 LevelDB首先将每条写入数据序列化为一个Record，单个Log文件中包含多个Record。同时，Log文件又划分为固定大小的Block单位，并保证Block的开始位置一定是一个新的Record。这种安排使得发生数据错误时，最多只需丢弃一个Block大小的内容。显而易见地，不同的Record可能共存于一个Block，同时，一个Record也可能横跨几个Block。
 
-TODO Log格式
+![Log format](http://i.imgur.com/ZqIvZAk.png)
 
 ```
 Block := Record * N
