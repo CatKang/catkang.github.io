@@ -21,7 +21,7 @@ Memtable对应Leveldb中的内存数据，LevelDB的写入操作会直接将数�
 
 LevelDB采用跳表SkipList实现，在给提供了O(logn)的时间复杂度的同时，又非常的易于实现：
 
-![跳表](http://i.imgur.com/1TZ97zy.png)
+![跳表](http://i.imgur.com/bmOK4Ui.png)
 
 SkipList中单条数据存放一条Key-Value数据，定义为：
 
