@@ -52,13 +52,13 @@ LevelDB中包括三种基本Iterator，他们分别针对Memtable，Block以及V
 
 
 
-#### **2，Block::Iter **
+#### **2，Block::Iter**
 
 针对SST文件Block存储格式的Iterator实现。遍历的过程中解析重启点，拼接key的共享部分和特有部分，获取对应的value值。Block详细格式见[庖丁解LevelDB之数据存储](http://catkang.github.io/2017/01/17/leveldb-data.html)。
 
 
 
-#### 3，**Version::LevelFileNumIterator **
+#### 3，**Version::LevelFileNumIterator**
 
 [庖丁解LevelDB之版本控制](http://catkang.github.io/2017/02/03/leveldb-version.html)中介绍了Version中记录了当前所有文件按层次划分的二维数组。其中Level1层之上的文件由于相互之间没有交集且有序，可以利用文件信息中的最大最小Key来进行二分查找。LevelFileNumIterator就是利用这个特点实现的对文件元信息进行遍历的Iterator。其中每个项记录了当前文件最大key到文件元信息的映射关系。这里的文件元信息包含文件号及文件长度。
 
