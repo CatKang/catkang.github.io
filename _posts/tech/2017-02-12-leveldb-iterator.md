@@ -12,7 +12,7 @@ keywords: leveldb，nosql，存储引擎，源码，source code，迭代器，It
 
 ## **作用**
 
-正如[庖丁解LevelDB之数据存储](http://catkang.github.io/2017/01/17/leveldb-data.html)中介绍的，LevelDB各个组件用不同的格式进行数据存取。在LevelDB内部外部，各个不同阶段又不可避免的需要从不同的视角遍历这些数据。如果每一个层次的数据遍历都需要详细的关心全部数据存储格式，无疑将使得整个过程变得无比的冗余复杂。Iterator的出现正式为了解决这个问题，Iterator在各个层次上，向上层实现提供了：
+正如[庖丁解LevelDB之数据存储](http://catkang.github.io/2017/01/17/leveldb-data.html)中介绍的，LevelDB各个组件用不同的格式进行数据存取。在LevelDB内部、外部、各个不同阶段又不可避免的需要从不同的视角遍历这些数据。如果每一个层次的数据遍历都需要详细的关心全部数据存储格式，无疑将使得整个过程变得无比的冗余复杂。Iterator的出现正式为了解决这个问题，Iterator在各个层次上，向上层实现提供了：
 
 **无须了解下层存储细节的情况下，通过统一接口对下层数据进行遍历的能力。**
 
@@ -58,7 +58,7 @@ LevelDB中包括三种基本Iterator，他们分别针对Memtable，Block以及V
 
 
 
-#### 3，**Version::LevelFileNumIterator**
+#### **3，Version::LevelFileNumIterator**
 
 [庖丁解LevelDB之版本控制](http://catkang.github.io/2017/02/03/leveldb-version.html)中介绍了Version中记录了当前所有文件按层次划分的二维数组。其中Level1层之上的文件由于相互之间没有交集且有序，可以利用文件信息中的最大最小Key来进行二分查找。LevelFileNumIterator就是利用这个特点实现的对文件元信息进行遍历的Iterator。其中每个项记录了当前文件最大key到文件元信息的映射关系。这里的文件元信息包含文件号及文件长度。
 
@@ -66,7 +66,7 @@ LevelDB中包括三种基本Iterator，他们分别针对Memtable，Block以及V
 
 ## **组合Iterator**
 
-组合Iterator由上述多个基本Iterator或组合Iterator组合而成，LevelDB中包含两种组合Iterator
+组合Iterator由多个基本Iterator或组合Iterator组合而成，LevelDB中包含两种组合Iterator：
 
 #### **1，TwoLevelIterator**
 TwoLevelIterator实现逻辑上有层次关系的数据的遍历操作。组合了**index iterator**和**data iterator**两层迭代器，其中index iterator记录从数据key值到data iterator的映射，而data iterator则负责真正数据key到value的映射。生成TwoLevelIterator时，需要提供index Iterator及BlockFunction函数，其中BlockFunction实现了index iterator value值的反序列化以及对应的data iterator的生成。
@@ -89,7 +89,7 @@ Compaction过程中需要对多个文件进行归并操作，并将结果输出�
 
 - 如果有Level0文件，则包含所有level0文件的Table::Iterator
 
-- 其他Level文件，包含文件索引的TwoLevelIterator，由Version::LevelFileNumIterato作为index iterator，Table::Iterator作为data iterator
+- 其他Level文件，加入NewConcatenationIterator，作为一个TwoLevelIterator，由Version::LevelFileNumIterator作为index iterator，Table::Iterator作为data iterator
 
 ![Compaction过程Iterator](http://i.imgur.com/4Ykmt3E.png)
 
