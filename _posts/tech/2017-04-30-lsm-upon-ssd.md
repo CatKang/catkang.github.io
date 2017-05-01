@@ -9,13 +9,13 @@ keywords: lsm, leveldb, rocksdb, ssd
 
 
 
-近年来，以LevelDB和Rocksdb为代表的LSM（Log-Structured Merge-Tree）存储引擎凭借其优异的写性能及不俗的读性能成为众多分布式组件的存储基石，包括团队近两年开发的类Redis大容量存储Pika和分布式KV存储Zeppelin，在享受LSM的高效的同时也开始逐渐体会到它的不足，比如它在大Value场景下的差强人意以及对磁盘的反复擦写。正如之前的博客[庖丁解LevelDB之概览](http://catkang.github.io/2017/01/07/leveldb-summary.html)中已经介绍了的LevelDB的设计思路，其最大的优势便是将磁盘的随机写转化为顺序写，但随着在系统中越来越多的使用SSD，这种设计是否仍然能带来如此大的收益，在SSD统治的世界里是否有更合理的存储结构。
+近年来，以LevelDB和Rocksdb为代表的LSM（Log-Structured Merge-Tree）存储引擎凭借其优异的写性能及不俗的读性能成为众多分布式组件的存储基石，包括我们近两年开发的类Redis大容量存储Pika和分布式KV存储Zeppelin，在享受LSM的高效的同时也开始逐渐体会到它的不足，比如它在大Value场景下的差强人意以及对磁盘的反复擦写。正如之前的博客[庖丁解LevelDB之概览](http://catkang.github.io/2017/01/07/leveldb-summary.html)中已经介绍了的LevelDB的设计思路，其最大的优势便是将磁盘的随机写转化为顺序写，但随着在系统中越来越多的使用SSD，这种设计是否仍然能带来如此大的收益，在SSD统治的世界里是否有更合理的存储结构。
 
 2016年，FAST会议发表了论文[WiscKey: Separating Keys from Valuesin SSD-conscious Storage](https://www.usenix.org/system/files/conference/fast16/fast16-papers-lu.pdf)，阐述了一种对SSD更友好的基于LSM的引擎设计方案。
 
 ## **问题**
 
-我们知道，LSM Tree是一种对写优化的系统，将随机写转化为顺序写，从而获得非常优秀的写性能，但一定的LSM也损失了一些东西作为交换，这个损失就是读写放大，即实际的磁盘读写跟用户请求读写的比值，就是说：
+大家知道，LSM Tree是一种对写优化的系统，将随机写转化为顺序写，从而获得非常优秀的写性能，但一定的LSM也损失了一些东西作为交换，这个损失就是读写放大，即实际的磁盘读写跟用户请求读写的比值，就是说：
 
 **LSM Tree 用大量的重复写入来交换让随机写获得顺序写的性能**
 
@@ -71,9 +71,9 @@ Compaction过程需要被删除的数据由于只是删除了Key，Value还保�
 
 其中head的位置是新的Block插入的位置，tail是Value回收操作的开始位置，垃圾回收过程被触发后，顺序从Tail开始读取Block，将有效的Block插入到Head。删除空间并后移Tail。可以看出，这里的回收方式由于需要将有效的数据重新Append，其实也带来了写放大，这就需要很好的权衡空间放大和写放大了，WiscKey建议系统根据删除修改请求的多少决定触发垃圾回收的时机。
 
-#### **3，**Crash Consistency
+#### **3，Crash Consistency**
 
-正式由于Key，Value的分离带来了不可避免的在程序Crash发生时不一致的情况，我们需要像标准的LSM一样提供如下保证：
+正式由于Key，Value的分离带来了不可避免的在程序Crash发生时不一致的情况，WiscKey需要像标准的LSM一样提供如下保证：
 
 - key-value的原子性：要成功都成功，要失败都失败
 - 重启后的顺序恢复
@@ -91,7 +91,9 @@ WicsKey给出的解决方案，是在启动时对Key， Value进行检查：
 
 ## **总结**
 
+通过上面的介绍，可以看出WiscKey并不是一个全方位的解决方案，其不得不面对Key Value分离带来的不一致和处理效率的下降，这种增加的负担会在小Value的场景下尤为明显。所以WiscKey针对的仅仅是Value长度远远大于Key的情况。我们的Zeppelin向上支持的S3需求很契合这样一种场景，所以WiscKey也是我们未来在引擎层的一种发展方向。
 
+最后抒情一下，WiscKey不完美，但他启示我们在硬件更替的现在，人们做到的还远远不够，还有更多的潜力和宝藏等待去发掘，属于LevelDB和RocksDB的容光可能会逐渐褪去，但人类对更好的存储的追求永不停歇，而我们工程师所要做的就是追逐先行者的脚步，搭建起连接未来和现实的桥梁。
 
 
 
