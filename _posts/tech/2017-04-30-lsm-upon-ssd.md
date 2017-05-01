@@ -107,3 +107,7 @@ WicsKey给出的解决方案，是在启动时对Key， Value进行检查：
 
 [庖丁解LevelDB之概览](http://catkang.github.io/2017/01/07/leveldb-summary.html)
 
+[Qihoo360 Zeppelin](https://github.com/Qihoo360/zeppelin)
+
+[Qihoo360 Pika](https://github.com/Qihoo360/pika)
+
