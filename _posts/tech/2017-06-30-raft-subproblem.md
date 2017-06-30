@@ -5,12 +5,12 @@ category: 技术
 tags: [一致性，Consistency, Raft, Quorum]
 keywords: 一致性, Consistency, Raft, Quorum
 ---
-	
+
 这篇文章来源于一个经常有人困惑的问题：Quorum与Paxos，Raft等一致性协议有什么区别，这个问题的答案本身很简单：**一致性协议大多使用了Quorum机制，但仅仅有Quorum(R+W>N)机制是保证不了一致性的**。本文计划延伸这个问题，以Raft为例回答一个完善的一致性协议拥有包括Quorum在内的那些机制，试着说明这些机制的完备以及其中每一项的不可或缺。
 
 
 
-## 一致性
+## **一致性**
 
 要回答这个问题首先需要说明Raft是做什么的，Paxos、Raft被称为一致性协议，顾名思义它们要解决的是多节点的一致性问题，需要注意的是这里所说的一致性并不是要求所有节点在任何时刻状态完全一致。而是要保证：
 
@@ -27,9 +27,9 @@ keywords: 一致性, Consistency, Raft, Quorum
 
 
 
-## Raft的子问题
+## **Raft的子问题**
 
-#### 1. Leader Election
+#### **1. Leader Election**
 
 组成一个Raft集群至少需要三台机器，而Raft限制每一时刻最多只能有一个节点可以发起提案，这个限制极大的简化了一致性的实现，这个可以发起提案的节点称为Leader。因此所要解决的第一个**问题**便是：
 
@@ -50,7 +50,7 @@ keywords: 一致性, Consistency, Raft, Quorum
   - 收到相同或更大Term的AppendEntry，承认对方为Leader，变成Follower；
   - 超时，重新开始新的选举，通过随机的超时时间来减少这种情况得发生。
 
-#### 2. Log Replication
+#### **2. Log Replication**
 
 从上面对Raft状态转换的讨论中可以看到，任何非Leader的节点都有可能在未来成为Leader，为了能保证后续Leader节点变化后依然能够使得整个集群对外保持一致，需要通过Log Replication机制来解决如下两个问题：
 
@@ -76,7 +76,7 @@ Follower在接受AppendEntry时会检查其前一条的Log是否与Leader相同�
 
 
 
-#### 3. Safety
+#### **3. Safety**
 
 通过上述的两个子问题已经解决了大部分的难题，除了下面两个细节：
 
@@ -87,7 +87,7 @@ Follower在接受AppendEntry时会检查其前一条的Log是否与Leader相同�
 
 
 
-## 子问题的充分性
+## **子问题的充分性**
 
 通过上述的三个子问题的解决，我们得到了一个完善的一致性算法，论文中给出了详细严谨的证明，其首先假设Commit过的提案会在后续丢失，之后推导出矛盾进而反证成功，这里不再赘述。该证明的关键点在于：Leader Election中要求新Leader获得超过半数的节点投票，Log Replication中每个Commit都有超过半数的节点同意，因此这两个大多数中至少存在一个公共节点，这个节点既同意了某个提案的Commit又投票给了新的Leader。
 
@@ -95,7 +95,7 @@ Follower在接受AppendEntry时会检查其前一条的Log是否与Leader相同�
 
 
 
-## 子问题的不可或缺
+## **子问题的不可或缺**
 
 上面讨论了三个子问题对一致性的充分性，接下来要讨论的是在Raft的框架下，任何一个子问题的缺失都会导致严重的不一致后果：
 
@@ -107,7 +107,7 @@ Follower在接受AppendEntry时会检查其前一条的Log是否与Leader相同�
 通过上面的讨论，可以看出一个完整的一致性协议做了包括Quorum在内的诸多努力。Raft划分了三个子问题来使得整个一致性算法的实现简单易懂，我们也基于Raft实现了自己的一致性库(Floyd)[https://github.com/Qihoo360/floyd]来满足诸如(Zeppelin)[https://github.com/Qihoo360/zeppelin]元信息集群及(Pika)[https://github.com/Qihoo360/pika]跨机房功能中对一致性的需求。
 
 
-## 参考
+## **参考**
 
 [In Search of an Understandable Consensus Algorithm](https://raft.github.io/raft.pdf)
 
