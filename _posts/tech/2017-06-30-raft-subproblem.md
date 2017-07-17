@@ -104,7 +104,7 @@ Follower在接受AppendEntry时会检查其前一条的Log是否与Leader相同�
 - Safety缺失，假设新Leader不能保证拥有最长的Log，其可能并没有最新的Commit数据，从而导致之前成功的提交不可见；
 
 
-通过上面的讨论，可以看出一个完整的一致性协议做了包括Quorum在内的诸多努力。Raft划分了三个子问题来使得整个一致性算法的实现简单易懂，我们也基于Raft实现了自己的一致性库(Floyd)[https://github.com/Qihoo360/floyd]来满足诸如(Zeppelin)[https://github.com/Qihoo360/zeppelin]元信息集群及(Pika)[https://github.com/Qihoo360/pika]跨机房功能中对一致性的需求。
+通过上面的讨论，可以看出一个完整的一致性协议做了包括Quorum在内的诸多努力。Raft划分了三个子问题来使得整个一致性算法的实现简单易懂，我们也基于Raft实现了自己的一致性库[Floyd](https://github.com/Qihoo360/floyd)来满足诸如[Zeppelin](https://github.com/Qihoo360/zeppelin)元信息集群及[Pika](https://github.com/Qihoo360/pika)跨机房功能中对一致性的需求。
 
 
 ## **参考**

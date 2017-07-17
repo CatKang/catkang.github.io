@@ -55,7 +55,7 @@ Header := Checksum + Length + Type
 Type := Full or First or Midder or Last
 ```
 
-Log文件划分为固定长度的Block，每个Block中包含多个Record；Record的前56个字节为Record头，包括32位checksum用做校验，16位存储Record实际内容数据的长度，8位的Type可以是Full、First、Middle或Last中的一种，表示该Record是否完整的在当前的Block中，如果不是则通过Type指明其前后的Block中是否有当前Record的前驱后继。
+Log文件划分为固定长度的Block，每个Block中包含多个Record；Record的前56个位为Record头，包括32位checksum用做校验，16位存储Record实际内容数据的长度，8位的Type可以是Full、First、Middle或Last中的一种，表示该Record是否完整的在当前的Block中，如果不是则通过Type指明其前后的Block中是否有当前Record的前驱后继。
 
 
 
