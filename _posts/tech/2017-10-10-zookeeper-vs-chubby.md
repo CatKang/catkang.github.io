@@ -1,6 +1,10 @@
-# Zookeeper vs Chubby
-
-
+---
+layout: post
+title: Zookeeper vs Chubby
+category: 技术
+tags: [Zookeeper, Chubby, 论文, 分布式锁, 锁服务, 一致性]
+keywords: Zookeeper, Chubby, 论文, 分布式锁, 锁服务, 一致性
+---
 
 上一篇博客[Chubby的锁服务](http://catkang.github.io/2017/09/29/chubby.html)中已经对[Chubby](https://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf)的设计和实现做了比较详细的实现，但由于其闭源身份，工程中接触比较多的还是它的一个非常类似的开源实现[Zookeeper](https://www.usenix.org/legacy/event/usenix10/tech/full_papers/Hunt.pdf)。Zookeeper作为后起之秀，应该对Chubby有很多的借鉴，他们有众多的相似之处，比如都可以提供分布式锁的功能；都提供类似于UNIX文件系统的数据组织方式；都提供了事件通知机制Event或Watcher；都在普通节点的基础上提供了临时节点来满足服务存活发现的功能；都以集群的方式提供服务；都通过选举产生Master并在集群间以Quorum的方式副本数据。但他们并不完全相同，并且Zookeeper还拥有后发优势，本文将重点介绍他们之间的区别，并试着分析这些区别的原因以和结果。
 
