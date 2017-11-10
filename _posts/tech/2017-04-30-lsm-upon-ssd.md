@@ -60,7 +60,7 @@ keywords: lsm, leveldb, rocksdb, ssd
 
 #### **1，Key Value分离带来的Range操作的低效**
 
-由于Key Value的分离，Range操作从顺序读变成了顺序度加多次随机读，从而变得低效。利用SSD并行IO的能力，可以将这种损失尽量抵消，这正是得益于SSD较强的随机访问性能。
+由于Key Value的分离，Range操作从顺序读变成了顺序读加多次随机读，从而变得低效。利用SSD并行IO的能力，可以将这种损失尽量抵消，这正是得益于SSD较强的随机访问性能。
 
 #### **2，被用户删除或者过期版本的Value的空间回收**
 
