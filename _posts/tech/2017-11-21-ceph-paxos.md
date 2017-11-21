@@ -42,7 +42,7 @@ Leader会选择当前集群中最大且唯一的Propose Num，简称Pn，每次�
 - Peon收到commit消息同样在本地DB执行，完成commit；
 - Leader追加**lease**消息将整个集群带入到active状态。
 
-![Figure 2](http://i.imgur.com/WnE9Jg1.png)
+![Figure 2](https://i.imgur.com/58xHCrx.png)
 
 
 
@@ -59,7 +59,7 @@ Peon的Lease超时或Leader任何消息超时都会将整个集群带回到Probi
 
 - 收到VICTORY消息的节点完成Election，进入Peon状态；
 
-![Figure 3](http://i.imgur.com/INz6V5X.png)
+![Figure 3](https://i.imgur.com/j6MDMXR.png)
 
 
 
@@ -76,7 +76,7 @@ Peon的Lease超时或Leader任何消息超时都会将整个集群带回到Probi
 - Leader收到last消息，更新自己的commit数据，并将新的commit日志信息通过**commit**消息发送给所有需要更新的Peon；
 - 当接收到所有Peon accept的last消息后，如果发现集群有uncommitted数据，则先对该提案重新进行提交，否则向Peon发送**lease**消息刷新其Lease；
 
-![Figure 4](http://i.imgur.com/4EsQ1xe.png)
+![Figure 4](https://i.imgur.com/5irlFkB.png)
 
 可以看出，当Leader和Peon之间的距离差距较大时，拉取并重放Log的时间会很长，因此在开始选主之前，Ceph Monitor首先通过如Figure 1所示的Synchronizing来将所有参与Paxos节点的日志信息差距缩小到足够小的区间，这个长度由paxos_max_join_drift进行配置，默认为10。Synchronizing过程中Monitor节点会根据Prob过程中发现的commit位置之间的差异进行数据的请求和接收。
 
