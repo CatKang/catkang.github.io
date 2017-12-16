@@ -114,3 +114,9 @@ CRUSH算法本质上也是一种分片的数据分布方式，其试图在以下
 [CRUSH: Controlled, Scalable, Decentralized Placement of Replicated Data](https://ceph.com/wp-content/uploads/2016/08/weil-crush-sc06.pdf)
 
 [Distributed Lookup Services](https://www.cs.rutgers.edu/~pxk/417/notes/23-lookup.html)
+
+[Bigtable: A Distributed Storage System for Structured Data](http://static.googleusercontent.com/media/research.google.com/en//archive/bigtable-osdi06.pdf)
+
+[Dynamo论文介绍](http://catkang.github.io/2016/05/27/dynamo.html)
+
+[Redis Cluster 实现](http://catkang.github.io/2016/05/08/redis-cluster-source.html)
