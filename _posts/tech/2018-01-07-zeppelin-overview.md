@@ -1,4 +1,10 @@
-# Zeppelin不是飞艇之概述
+---
+layout: post
+title: Zeppelin不是飞艇之概述
+category: 技术
+tags: [Zeppelin, KV存储，分布式存储]
+keywords: Zeppelin, KV存储，分布式存储
+---
 
 过去的一年多的时间中，大部分的工作都围绕着[Zeppelin](https://github.com/Qihoo360/zeppelin)这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。
 
