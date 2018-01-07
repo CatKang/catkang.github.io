@@ -21,7 +21,7 @@ keywords: 一致性, Consistency, Raft, Quorum
 1. 强调在网络分区或节点异常时，是因为如果不考虑这种异常状况，一致性是非常容易保证的，单节点即可。而一致性协议所要做的就是在容忍异常的情况下保证一致。
 2. 这里的一致是对集群外部使用者而言的，将整个集群看做一个整体。
 
-将每一个对Raft集群的操作称为一个提案，希望Raft集群对外屏蔽内部的网络或节点异常，依次对每一个提案作出相应，提交成功的提案可以在后续操作中持续可见。这里的提案需要是幂等的，即重复执行不会导致集群状态不同。
+将每一个对Raft集群的操作称为一个提案，希望Raft集群对外屏蔽内部的网络或节点异常，依次对每一个提案作出响应，提交成功的提案可以在后续操作中持续可见。这里的提案需要是幂等的，即重复执行不会导致集群状态不同。
 
 接下来我们就看Raft是如何实现这种一致性保证的。Raft将一致性问题拆分为三个子问题，各个击破，从而使得其实现简单易懂。本文将首先简单介绍其三个子问题的内容以及达成方式；之后证明三个子问题是实现一致性的充分条件；最后尝试说明这三个子问题的保证缺一不可。
 
@@ -81,7 +81,7 @@ Follower在接受AppendEntry时会检查其前一条的Log是否与Leader相同�
 通过上述的两个子问题已经解决了大部分的难题，除了下面两个细节：
 
 1. Leader Crash后，新的节点成为Leader，为了不让数据丢失，我们希望新Leader包含所有已经Commit的Entry。为了避免数据从Follower到Leader的反向流动带来的复杂性，**Raft限制新Leader一定是当前Log最新的节点，即其拥有最多最大term的Log Entry**。
-2. 通常对Log的Commit方式都是Leader统计成功AppendEntry的节点是否过半数。在节点频发Crash的场景下只有旧Leader Commit的Log Entry可能会被后续的Leader用不同的Log Entry覆盖，从而导致数据丢失。造成这种错误的根本原因是Leader在Commit后突然Crash，拥有这条Entry的节点此时可能并不能占到大多数。这种情况在论文中有详细的介绍。Raft很巧妙的限制**Leader只能对自己本Term的提案采用统计大多数的方式Commit**，而旧Term的提案则利用“Commit的Log之前的所有Log都顺序Commit”的机制来提交。
+2. 通常对Log的Commit方式都是Leader统计成功AppendEntry的节点是否过半数。在节点频发Crash的场景下只有旧Leader Commit的Log Entry可能会被后续的Leader用不同的Log Entry覆盖，从而导致数据丢失。造成这种错误的根本原因是Leader在Commit后突然Crash，拥有这条Entry的节点并不一定能在之后的选主中胜出。这种情况在论文中有详细的介绍。Raft很巧妙的限制**Leader只能对自己本Term的提案采用统计大多数的方式Commit**，而旧Term的提案则利用“Commit的Log之前的所有Log都顺序Commit”的机制来提交，从而解决了这个问题。另一篇博客中针对这个问题有更详细的阐述[Why Raft never commits log entries from previous terms directly](http://catkang.github.io/2017/11/30/raft-safty.html)
 
 
 

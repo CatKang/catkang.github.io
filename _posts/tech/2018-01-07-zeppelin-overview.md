@@ -1,6 +1,6 @@
 # Zeppelin不是飞艇之概述
 
-过去的一年多的时间里，大部分的工作都围绕着[Zeppelin](https://github.com/Qihoo360/zeppelin)这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。
+过去的一年多的时间中，大部分的工作都围绕着[Zeppelin](https://github.com/Qihoo360/zeppelin)这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。
 
 
 
@@ -25,6 +25,8 @@ Zeppelin的整个设计和实现都围绕这三个目标努力，本文将从API
 - 基本的KV存储相关接口：Set、Get、Delete；
 - 支持TTL；
 - HashTag及针对同一HashTag的Batch操作，Batch保证原子，这一支持主要是为了支撑上层更丰富的协议。
+
+
 
 
 
@@ -82,10 +84,57 @@ Zeppelin中采用了我们的一致性库[Floyd](https://github.com/Qihoo360/flo
 
 ## **副本策略**
 
+由于对高性能的定位，我们选择了Master，Slave的副本策略。每个Partition包含至少三个副本，其中一个为Master，其余为Slave。所有的用户请求由Master副本负责，读写分离的场景允许Slave也提供读服务。Master处理的写请求会在修改DB前写WAL，称为Binlog，并异步的将Binlog同步给Slave。
+
+![Imgur](https://i.imgur.com/Df4bO1A.png)
+
+上图所示的是Master，Slave之间建立主从关系的过程，右边为Slave。中心节点元信息变化时，存储节点发现自己是某个Partition新的Slave时，将TrySync任务通过Buffer交给TrySync Moudle；TrySync Moudle向Master的Command Module发起Trysync；Master生成Binlog Send任务到Send Task Pool；Binlog Send Module向Slave发送Binlog，完成数据异步复制。更详细内容见：[Zeppelin不是飞艇之存储节点](https://)
+
 
 
 ## **数据存储**
 
+Zeppelin目前采用了Rocksdb作为最终的数据存储，每个Partition副本都会占有单独的Rocksdb实例。采用LSM方案也是为了对高性能的追求，LSM通过将随机写转换为顺序写来大幅提升了写性能，同时，通过内存缓存保证了相对不错的读性能。[庖丁解LevelDB之概览](http://catkang.github.io/2017/01/07/leveldb-summary.html)中以LevelDB为例介绍了LSM的设计和实现。
+
+然而在数据Value较大的场景下，LSM写放大问题严重，在使用SSD时让通过多次重复写换来的高性能优势不太划算。而Zeppelin需要对上层不同协议的支撑，又不可避免的会出现大Value，[LSM upon SSD](http://catkang.github.io/2017/04/30/lsm-upon-ssd.html)针对做了更多的讨论，包括这种改进在内的其他针对不同场景的存储引擎及可插拔的设计也是未来的发展方向。
+
 
 
 ## **故障检测**
+
+一个好的故障检测的机制应该能做到如下几点：
+
+- **及时**：节点发生异常如宕机或网络中断时，集群可以在可接受的时间范围内感知；
+- **适当的压力**：包括对节点的压力，和对网络的压力；
+- **容忍网络抖动**
+- **扩散机制**：节点存活状态改变导致的元信息变化需要通过某种机制扩散到整个集群；
+
+Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群，元信息节点集群的故障检测依赖下层的Floyd的Raft实现，并且在上层通过Jeopardy阶段来容忍抖动。更详细内容见：[Zeppelin不是飞艇之元信息节点](https://)。
+
+而存储节点的故障检测由元信息节点集群负责， 感知到异常后，元信息节点集群修改元信息、更新元信息版本号，并通过心跳通知所有存储节点，存储节点发现元信息变化后，主动拉去最新元信息并作出相应改变。
+
+最后，Zeppelin还提供了丰富的运维、监控数据，以及相关工具。方便通过Prometheus等工具监控展示。
+
+
+
+## **相关**
+
+[Zeppelin](https://github.com/Qihoo360/zeppelin)
+
+[Floyd](https://github.com/Qihoo360/floyd)
+
+[Raft](https://raft.github.io/)
+
+[浅谈分布式存储系统数据分布方法](http://catkang.github.io/2017/12/17/data-placement.html)
+
+[Zeppelin的数据分布方式（未完）](http://)
+
+[Zeppelin不是飞艇之元信息节点（未完）](https://)
+
+[Zeppelin不是飞艇之存储节点（未完）](https://)
+
+[Raft和它的三个子问题](http://catkang.github.io/2017/06/30/raft-subproblem.html)
+
+[庖丁解LevelDB之概览](http://catkang.github.io/2017/01/07/leveldb-summary.html)
+
+[LSM upon SSD](http://catkang.github.io/2017/04/30/lsm-upon-ssd.html)
