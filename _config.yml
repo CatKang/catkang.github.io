@@ -17,7 +17,7 @@ author:
 title: CatKang的博客 
 description: Out of three sounds he frame, not a fourth sound, but a star
 url: http://catkang.github.io/
-rss_url: /pages/atom.xml
+rss_url: /feed.xml
 
 # avatar头像及Favicon
 avatar: https://avatars2.githubusercontent.com/u/4082238?v=3&s=460
