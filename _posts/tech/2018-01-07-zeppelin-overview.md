@@ -98,7 +98,7 @@ Zeppelin中采用了我们的一致性库[Floyd](https://github.com/Qihoo360/flo
 
 ## **副本策略**
 
-为了容错，通常采用数据三副本的方式，又由于对高性能的定位，我们选择了Master，Slave的副本策略。每个Partition包含至少三个副本，其中一个为Master，其余为Slave。所有的用户请求由Master副本负责，读写分离的场景允许Slave也提供读服务。Master处理的写请求会在修改DB前写WAL，称为Binlog，并异步的将Binlog同步给Slave。
+为了容错，通常采用数据三副本的方式，又由于对高性能的定位，我们选择了Master，Slave的副本策略。每个Partition包含至少三个副本，其中一个为Master，其余为Slave。所有的用户请求由Master副本负责，读写分离的场景允许Slave也提供读服务。Master处理的写请求会在修改DB后写Binlog，并异步的将Binlog同步给Slave。
 
 ![Imgur](https://i.imgur.com/Df4bO1A.png)
 
