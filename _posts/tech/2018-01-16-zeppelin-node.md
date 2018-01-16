@@ -48,7 +48,7 @@ Zeppelin的副本之间采用异步复制的方式，由Slave发起建立主从�
 
 ![Sync](https://i.imgur.com/lNlLS2a.png)
 
-#### Binlog
+#### **Binlog**
 
 Binlog支持尾部的Append操作，由多个固定大小的文件组成，文件编号和文件内偏移一起标记一个Binlog位置。如下图所示，每条用户的写请求被记录在一个**Record**中，Record Header记录了Value的Length，校验Checksum及类型Type，Full表示Record被完整的记录在一个**Block**中，First，Middle，Last表示该Record横跨多个Block，当前是开头，中间或是结尾的部分。
 
@@ -68,13 +68,13 @@ Binlog支持尾部的Append操作，由多个固定大小的文件组成，文�
 
 
 
-#### Binlog接收
+#### **Binlog接收**
 
 对应节点的Binlog Receive线程会接受所有来自不同Master分片的Binlog消息，按照分片号分发给多个Binlog Worker，Binlog Worker顺序执行Binlog消息，同样要写DB及Binlog，从而完成与Master分片的数据同步。
 
 
 
-#### Binlog压缩及全同步
+#### **Binlog压缩及全同步**
 
 可以看出Binlog同样需要占用大量的磁盘空间，为了不使这种消耗无限增长，Zeppelin设置保留Binlog的时间和个数，并定时清理不需要的Binlog文件，称为Binlog压缩。
 
