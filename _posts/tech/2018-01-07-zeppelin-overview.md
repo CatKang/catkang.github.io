@@ -78,7 +78,7 @@ Zeppelin根据这些信息及当前的数据分布直接计算出完整的目标
 - Meta Server以**集群的方式**提供服务，之间以一致性算法来保证数据正确。
 - **良好的Meta设计**：包括一致性数据的延迟提交；通过Lease让Follower分担读请求；粗粒度的分布式锁实现；合理的持久化及临时数据划分等。更详细的介绍见：[Zeppelin不是飞艇之元信息节点](https://)
 - **智能Client**：Client承担更多的责任，比如缓存元信息；维护到Node Server的链接；计算数据分布的初始及变化。
-- **Node Server分担更多责任**：如元信息更新由存储节点发起；通过MOVE，WAIT等信息，实现元信息变化时的客户端请求重定向，减轻Meta压力。更详细的介绍见：[Zeppelin不是飞艇之存储节点](https://)
+- **Node Server分担更多责任**：如元信息更新由存储节点发起；通过MOVE，WAIT等信息，实现元信息变化时的客户端请求重定向，减轻Meta压力。更详细的介绍见：[Zeppelin不是飞艇之存储节点](http://catkang.github.io/2018/01/07/zeppelin-node.html)
 
 通过上面几个方面的策略设计，尽量的降低对中心节点的依赖。即使Meta集群整个异常时，已有的客户端请求依然能正常进行。
 
@@ -102,7 +102,7 @@ Zeppelin中采用了我们的一致性库[Floyd](https://github.com/Qihoo360/flo
 
 ![Imgur](https://i.imgur.com/Df4bO1A.png)
 
-上图所示的是Master，Slave之间建立主从关系的过程，右边为Slave。当元信息变化时，Node从Meta拉取最新的元信息，发现自己是某个Partition新的Slave时，将TrySync任务通过Buffer交给TrySync Moudle；TrySync Moudle向Master的Command Module发起Trysync；Master生成Binlog Send任务到Send Task Pool；Binlog Send Module向Slave发送Binlog，完成数据异步复制。更详细内容见：[Zeppelin不是飞艇之存储节点](https://)。未来也考虑支持Quorum及EC的副本方式来满足不同的使用场景。
+上图所示的是Master，Slave之间建立主从关系的过程，右边为Slave。当元信息变化时，Node从Meta拉取最新的元信息，发现自己是某个Partition新的Slave时，将TrySync任务通过Buffer交给TrySync Moudle；TrySync Moudle向Master的Command Module发起Trysync；Master生成Binlog Send任务到Send Task Pool；Binlog Send Module向Slave发送Binlog，完成数据异步复制。更详细内容见：[Zeppelin不是飞艇之存储节点](http://catkang.github.io/2018/01/07/zeppelin-overview.html)。未来也考虑支持Quorum及EC的副本方式来满足不同的使用场景。
 
 
 
@@ -145,7 +145,7 @@ Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群�
 
 [Zeppelin不是飞艇之元信息节点（未完）](https://)
 
-[Zeppelin不是飞艇之存储节点（未完）](https://)
+[Zeppelin不是飞艇之存储节点](http://catkang.github.io/2018/01/07/zeppelin-overview.html)
 
 [Raft和它的三个子问题](http://catkang.github.io/2017/06/30/raft-subproblem.html)
 
