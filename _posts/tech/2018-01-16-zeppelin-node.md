@@ -141,7 +141,7 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 
 [Zeppelin不是飞艇之概述](http://catkang.github.io/2018/01/07/zeppelin-overview.html)
 
-[Zeppelin不是飞艇之元信息节点（未完）](https://)
+[Zeppelin不是飞艇之元信息节点](http://catkang.github.io/2018/01/19/zeppelin-meta.html)
 
 [The Log-Structured Merge-Tree](https://pdfs.semanticscholar.org/123f/c2af8203708f8bd2b6c3e3d6a41dd8f9a30e.pdf)
 

@@ -76,7 +76,7 @@ Zeppelin根据这些信息及当前的数据分布直接计算出完整的目标
 为了减轻上面提到的中心节点的单点问题。我们采取了如下策略：
 
 - Meta Server以**集群的方式**提供服务，之间以一致性算法来保证数据正确。
-- **良好的Meta设计**：包括一致性数据的延迟提交；通过Lease让Follower分担读请求；粗粒度的分布式锁实现；合理的持久化及临时数据划分等。更详细的介绍见：[Zeppelin不是飞艇之元信息节点](https://)
+- **良好的Meta设计**：包括一致性数据的延迟提交；通过Lease让Follower分担读请求；粗粒度的分布式锁实现；合理的持久化及临时数据划分等。更详细的介绍见：[Zeppelin不是飞艇之元信息节点](http://catkang.github.io/2018/01/19/zeppelin-meta.html)
 - **智能Client**：Client承担更多的责任，比如缓存元信息；维护到Node Server的链接；计算数据分布的初始及变化。
 - **Node Server分担更多责任**：如元信息更新由存储节点发起；通过MOVE，WAIT等信息，实现元信息变化时的客户端请求重定向，减轻Meta压力。更详细的介绍见：[Zeppelin不是飞艇之存储节点](http://catkang.github.io/2018/01/07/zeppelin-node.html)
 
@@ -123,7 +123,7 @@ Node Server最终需要完成数据的存储及查询等操作。Zeppelin目前�
 - **容忍网络抖动**
 - **扩散机制**：节点存活状态改变导致的元信息变化需要通过某种机制扩散到整个集群；
 
-Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群，元信息节点集群的故障检测依赖下层的Floyd的Raft实现，并且在上层通过Jeopardy阶段来容忍抖动。更详细内容见：[Zeppelin不是飞艇之元信息节点](https://)。
+Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群，元信息节点集群的故障检测依赖下层的Floyd的Raft实现，并且在上层通过Jeopardy阶段来容忍抖动。更详细内容见：[Zeppelin不是飞艇之元信息节点](http://catkang.github.io/2018/01/19/zeppelin-meta.html)。
 
 而存储节点的故障检测由元信息节点负责， 感知到异常后，元信息节点集群修改元信息、更新元信息版本号，并通过心跳通知所有存储节点，存储节点发现元信息变化后，主动拉去最新元信息并作出相应改变。
 
@@ -143,7 +143,7 @@ Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群�
 
 [Zeppelin的数据分布方式（未完）](http://)
 
-[Zeppelin不是飞艇之元信息节点（未完）](https://)
+[Zeppelin不是飞艇之元信息节点](http://catkang.github.io/2018/01/19/zeppelin-meta.html)
 
 [Zeppelin不是飞艇之存储节点](http://catkang.github.io/2018/01/07/zeppelin-overview.html)
 
