@@ -108,8 +108,11 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 
 ![Imgur](https://i.imgur.com/Df4bO1A.png)
 
-- Master动态更新Slave Lease机制：Master会通过Binlog请求或者Lease命令向Slave刷新自己的租约时间。这个租约时间是通过Master节点的当前负载动态计算的，这是由于我们用固定的Binlog Sender负责所有分片的Binlog发送，负载高时需要更多的时间。
-- Slave 感知并恢复Trysync机制：当Slave长期没有收到合法的Binlog请求，或租约超时时，会向TrySync Buffer加入TrySync请求任务，由TrySync Moudle重新向主发起主从同步。
+- Slave副本维护一个Master的超时时间和上一次通信时间，收到合法的Binlog请求或Lease命令会更新通信时间。否在，超时后触发TrySync Moudle发起新的主动同步请求。Master在收到新的TrySync请求后会用新的Binlog发送任务替换之前的，从而恢复Binlog同步过程。
+
+- Master动态更新Slave超时时间：由于我们用固定数量的Binlog Sender负责所有分片的Binlog发送，上面提到，当某个发送任务的时间片用完后会被放回到任务队列等待下一次处理，当Master负载较高时这个间隙就会变长。为了不让Slave无效的触发TrySync，每次时间片用完被放回任务队列前Master都会向Slave发送Lease命令，向Slave刷新自己的超时时间。这个超时 是通过Master节点的当前负载动态计算的：
+
+  > Timeout = MIN((TaskCount * TimeSlice / SenderCount + RedundantTime), MinTime)
 
 
 
@@ -117,7 +120,7 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 
 ## **Lessons We Learn** 
 
-#### **限制资源线性增长**
+#### **1，限制资源线性增长**
 
 分片个数是Zeppelin的一个很重要的参数，为了支持更大的集群规模，需要更多的分片数。而因为分片是数据存储，同步，备份的最小单位，分片数的增多势必会导致资源的膨胀，Zeppelin中做了很多设计来阻止这种资源随分片数的线性增长：
 
@@ -127,7 +130,7 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 
 
 
-#### **异步比同步带来更多的成本**
+#### **2，异步比同步带来更多的成本**
 
 无论是副本同步还是请求处理，异步方式都会比同步方式带来更好的性能或吞吐。而通过上面副本同步部分的介绍可以看出，由于采用了异步的副本同步方式，需要增加额外的机制来保证Binlog一致，检测链路异常，这些都是在同步场景下不需要的。给了我们一个启发就是应该更慎重的考虑异步选项。
 
