@@ -38,19 +38,19 @@ Zeppelin的线程模型如下图所示：
 
 ## **元信息变化**
 
-当有节点起宕，节点加入退出或创建删除表等元信息变化时，存储节点需要感知并作出对应的改变。正常情况下，存储节点Node与元信息节点Meta之间维持一个心跳，Meta通过心跳向Node发送当前的元信息版本号Epoch，Node向Meta发送当前负责分片的Binlog偏移量。元信息改变时，Node会从心跳得到更大的Epoch，这时Heartbeat线程触发MetaCmd线程向Meta主动发起Pull请求，获得最新的元信息后，Node进行对应的主从迁移，分片添加删除等操作。
+当有节点起宕，节点加入退出或创建删除表等元信息变化时，存储节点需要感知并作出对应的改变。正常情况下，存储节点Node与元信息节点Meta之间维持一个心跳，Meta通过心跳向Node发送当前的元信息版本号Epoch，Node向Meta发送当前负责分片的Binlog偏移量。元信息改变时，Node会从心跳得到更大的Epoch，这时Heartbeat线程通知MetaCmd线程向Meta主动发起Pull请求，获得最新的元信息，之后Node进行对应的主从迁移，分片添加删除等操作。
 
 
 
 ## **副本同步**
 
-Zeppelin的副本之间采用异步复制的方式，由Slave发起建立主从关系的，当存储节点发现自己所负责的分片有主从关系变化时，会触发新的Slave分片向对应的Master分片发起TrySync请求，TrySync请求中携带Slave当前的Binlog偏移，Master从该偏移顺序发送Binlog信息。客户端写入Master副本即返回，Master异步的将Binlog发送给所有的Slave完成数据同步。下图所示是主从之间配合数据同步的线程关系。
+Zeppelin的副本之间采用异步复制的方式，由Slave发起建立主从关系，当存储节点发现自己所负责的分片有主从关系变化时，会触发Slave向对应的Master发起TrySync请求，TrySync中携带Slave当前的Binlog偏移，Master从该偏移顺序发送Binlog信息。下图所示是主从之间配合数据同步的线程关系。
 
 ![Sync](https://i.imgur.com/lNlLS2a.png)
 
 #### **Binlog**
 
-Binlog支持尾部的Append操作，由多个固定大小的文件组成，文件编号和文件内偏移一起标记一个Binlog位置。如下图所示，每条用户的写请求被记录在一个**Record**中，Record Header记录了Value的Length，校验Checksum及类型Type，Full表示Record被完整的记录在一个**Block**中，First，Middle，Last表示该Record横跨多个Block，当前是开头，中间或是结尾的部分。
+Binlog支持尾部的Append操作，由多个固定大小的文件组成，文件编号和文件内偏移一起标记一个Binlog位置。如下图所示，每条用户的写请求被记录在一个**Record**中，Record Header记录了Value的Length，校验Checksum及类型Type，Type Full表示Record被完整的记录在一个**Block**中，First，Middle，Last表示该Record横跨多个Block，当前是开头，中间或是结尾的部分。
 
 可以看出每个Record的解析，十分依赖从Header中读到的Length，那么当Binlog文件中有一小段损坏时，就会因为无法找到后一条而损失整个Binlog文件，为了降低这个损失，Binlog被划分为固定大小的**Block**，每个Block的开头都保证是一个Record开头，Binlog损坏时，只需要略过当前Block，继续后续的解析。
 
@@ -60,7 +60,7 @@ Binlog支持尾部的Append操作，由多个固定大小的文件组成，文�
 
 #### **Binlog发送**
 
-当主从关系建立以后，Master副本需要不断的给Slave副本发送Binlog信息。我们之前提到，一个分片都会对应一个Binlog，当有很多分片时，就没有办法给每个Binlog分配一个发送线程。因此Zeppelin采用了如下图所示机制：当前存储节点所负责的每个Master分片的Binlog发送任务被封装为一个Task，其中包括其对应的Table，分片号，目标Slave节点地址，当前要发送的Binlog位置（文件号加文件内偏移）。所有的Task被排成一个FIFO队列，固定个数的Binglog发送线程从队列头中取出一个Task，服务固定的时间片长度后将其插回队列尾部。
+当主从关系建立以后，Master副本需要不断的给Slave副本发送Binlog信息。我们之前提到，一个分片都会对应一个Binlog，当有很多分片时，就没有办法给每个Binlog分配一个发送线程。因此Zeppelin采用了如下图所示机制：当前存储节点所负责的每个Master分片的Binlog发送任务被封装为一个Task，Task中记录其对应的Table，分片号，目标Slave节点地址，当前要发送的Binlog位置（文件号加文件内偏移）。所有的Task被排成一个FIFO队列，固定个数的Binglog发送线程从队列头中取出一个Task，服务固定的时间片长度后将其插回队列尾部。
 
 ![Binlog Sender](https://i.imgur.com/tbxpUbA.png)
 
@@ -108,9 +108,9 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 
 ![Imgur](https://i.imgur.com/Df4bO1A.png)
 
-- Slave副本维护一个Master的超时时间和上一次通信时间，收到合法的Binlog请求或Lease命令会更新通信时间。否在，超时后触发TrySync Moudle发起新的主动同步请求。Master在收到新的TrySync请求后会用新的Binlog发送任务替换之前的，从而恢复Binlog同步过程。
+- Slave副本维护一个Master的超时时间和上一次通信时间，收到合法的Binlog请求或Lease命令会更新通信时间。否则，超时后触发TrySync Moudle发起新的主动同步请求。Master在收到新的TrySync请求后会用新的Binlog发送任务替换之前的，从而恢复Binlog同步过程。
 
-- Master动态更新Slave超时时间：由于我们用固定数量的Binlog Sender负责所有分片的Binlog发送，上面提到，当某个发送任务的时间片用完后会被放回到任务队列等待下一次处理，当Master负载较高时这个间隙就会变长。为了不让Slave无效的触发TrySync，每次时间片用完被放回任务队列前Master都会向Slave发送Lease命令，向Slave刷新自己的超时时间。这个超时 是通过Master节点的当前负载动态计算的：
+- Master动态更新Slave超时时间：由于我们用固定数量的Binlog Sender负责所有分片的Binlog发送，上面提到，当某个发送任务的时间片用完后会被放回到任务队列等待下一次处理，当Master负载较高时这个间隙就会变长。为了不让Slave无效的触发TrySync，每次时间片用完被放回任务队列前，Master都会向Slave发送Lease命令，向Slave刷新自己的超时时间。这个超时是通过Master节点的当前负载动态计算的：
 
   > Timeout = MIN((TaskCount * TimeSlice / SenderCount + RedundantTime), MinTime)
 
@@ -133,6 +133,8 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 #### **2，异步比同步带来更多的成本**
 
 无论是副本同步还是请求处理，异步方式都会比同步方式带来更好的性能或吞吐。而通过上面副本同步部分的介绍可以看出，由于采用了异步的副本同步方式，需要增加额外的机制来保证Binlog一致，检测链路异常，这些都是在同步场景下不需要的。给了我们一个启发就是应该更慎重的考虑异步选项。
+
+之后在[Zeppelin不是飞艇之元信息节点](http://catkang.github.io/2018/01/19/zeppelin-meta.html)中，将详细介绍Zeppelin的另一个重要角色Meta。
 
 
 

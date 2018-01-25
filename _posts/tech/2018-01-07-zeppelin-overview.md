@@ -6,21 +6,27 @@ tags: [Zeppelin, KV存储，分布式存储]
 keywords: Zeppelin, KV存储，分布式存储
 ---
 
-过去的一年多的时间中，大部分的工作都围绕着[Zeppelin](https://github.com/Qihoo360/zeppelin)这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。
+过去的一年多的时间中，大部分的工作都围绕着[Zeppelin](https://github.com/Qihoo360/zeppelin)这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。Zeppelin是一个高性能，高可用的分布式Key-Value存储平台，以高性能、大集群为目标，说平台是因为Zeppelin不是终点而是起点，在Zeppelin的基础上，不仅能够提供KV的访问，还可以通过简单的一层转换满足更复杂的协议需求。本文就将从背景，技术细节，回顾和未来计划几个方面来进行介绍。
 
 
 
-## **定位**
+## **背景**
 
-[Zeppelin](https://github.com/Qihoo360/zeppelin)是一个分布式的KV存储平台，在设计之初，我们对他有如下几个主要期许：
+Zeppelin的故事首先从我们之前的一个项目[Pika](https://github.com/Qihoo360/pika)说起，Pika是一个完全兼容Redis协议的单机存储，用多线程及LSM的方式，在降低Redis内存成本的同时基本保持了其高性能的特点。 正是由于Pika项目在公司内外的普及，让我们认识到有大量需要高性能的存储需求，同时随着Pika项目的推进，以及业务的发展，这种曾经被我们定义为缓存的需求正向着更大容量和更高性能发展，因此一个大容量高性能的分布式Pika势在必行。
 
-- 高性能；
+同时，维护[Ceph](https://github.com/ceph/ceph)的经验给我们强化了一个认识，那就是从一个原子的用户接口出发可以很方便的构建出各种复杂的上层需求和用户接口，正如Ceph从一个高一致的对象存储平台Rados出发构建了对象存储、块存储和文件存储。Zeppelin作为一个高性能的KV存储平台，可以向上构建高性能S3，Table Store，Redis协议等，可以看出并没有一个合适的开源实现能够同时满足我们的需求。
+
+最后，之前的项目[Pika](https://github.com/Qihoo360/pika)、[QConf](https://github.com/Qihoo360/QConf)、Bada等给我们积累了不少的经验和丰富稳定的基础库，包括网络库[Pink](https://github.com/PikaLabs/pink)，辅助库[Slash](https://github.com/PikaLabs/slash)，引擎库[Nemo](https://github.com/Qihoo360/nemo-rocksdb)，一致性库[Floyd](https://github.com/PikaLabs/floyd)，再加上我们对[Rocksdb](https://github.com/facebook/rocksdb)的积累。这时我们离需要的高性能KV存储平台其实已经并不遥远。再加上陈宗志同学的蜜汁不屑，Zeppelin就开始了自己的征程。从2016年7月正式立项，到半年后2017年3月0.3.1版本开始接入业务，再到现在1.2.3版本，Zeppelin已经逐步完善稳定，并接入包括搜索，代码发布，信息流，静床在内的众多业务的近二十个集群。
+
+通过上面的背景介绍，可以看出在设计之初，我们就对Zeppelin有如下几个主要期许：
+
+- 高性能：Zeppelin和Pika的立命之本，因此无论语言选择，副本方式，引擎选择还是其他结构设计都不能以牺牲性能作为代价。
 
 
-- 大集群，因此需要有更好的可扩展性和必要的业务隔离及配额；
+- 大集群：因此需要有更好的可扩展性和必要的业务隔离及配额；
 - 作为支撑平台，向上支撑更丰富的协议；
 
-Zeppelin的整个设计和实现都围绕这三个目标努力，本文将从API、数据分布、元信息管理、一致性、副本策略、数据存储、故障检测几个方面来分别介绍。
+Zeppelin的整个设计和实现都围绕这三个目标努力。这里将从API、数据分布、元信息管理、一致性、副本策略、数据存储、故障检测几个方面来分别介绍其技术细节。
 
 
 
@@ -54,7 +60,7 @@ Zeppelin的整个设计和实现都围绕这三个目标努力，本文将从API
 
 - 各个故障层级的分布规则；
 
-Zeppelin根据这些信息及当前的数据分布直接计算出完整的目标数据分布，这个过程会尽量保证数据均衡及需要的副本故障域。下图举例展示了，副本在机架（cabinet）级别隔离的规则及分布方式。更详细的介绍见[Zeppelin的数据分布方式](http://)
+Zeppelin根据这些信息及当前的数据分布直接计算出完整的目标数据分布，这个过程会尽量保证数据均衡及需要的副本故障域。下图举例展示了，副本在机架（cabinet）级别隔离的规则及分布方式。更详细的介绍见[Decentralized Placement of Replicated Data](https://whoiami.github.io/DPRD)
 
 ![Partition Placement](https://i.imgur.com/WPH4VBj.png)
 
@@ -131,6 +137,22 @@ Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群�
 
 
 
+## **回顾及未来发展**
+
+通过本文对Zeppelin设计的介绍，可以看出Zeppelin并不是一个适用于任何场景的万能药，它一直围绕自己的高性能、易扩展、支持上层协议的目标，也就牺牲了对一致性的满足，因此Zeppelin并不适合对数据一致性要求高的需求场景，同时也不能支持像数据库、文件系统、块存储等对一致性要求很高的上层协议。
+
+目前Zeppelin已经完成了包括扩容缩容，中心节点成员变化在内的大部分作为分布式存储的基本需求。下一步会依然围绕我们的设计初心，同时针对目前的一些问题进行进一步的迭代，包括：
+
+- 可选的存储引擎：目前的Rocksdb存储引擎有自己的应用场景限制，比如在大value情况下显著的读写放大，空间放大，以及读场景对缓存的过分依赖。而支持更多的上层协议就需要面对更多的数据和业务场景，因此可选的存储引擎就成为一个急迫的发展方向，包括WiscKey，BitCast在内的其他存储引擎也会成为Zeppelin的选项。
+- 跨机房同步：目前的Zeppelin集群分机房部署，而越来越多的业务出现对跨机房同步的需要。
+- 更丰富的语言接口：目前已经支持C++，Go，Python及Php。
+- 更精确地运维控制：比如对不同副本DB的Compaction时机的控制，数据恢复时更动态的流量控制，暴露更多的内部状态数据等。
+- 上层协议的支持和完善：目前已经支持了简单的TableStore及高性能S3，同时支持上层协议也需要更好的对协议元数据的管理方式，目前Batch操作原子性需要通过HashTag限制到一个分片。
+
+
+
+
+
 ## **相关**
 
 [Zeppelin](https://github.com/Qihoo360/zeppelin)
@@ -141,7 +163,7 @@ Zeppelin 中的故障可能发生在元信息节点集群或存储节点集群�
 
 [浅谈分布式存储系统数据分布方法](http://catkang.github.io/2017/12/17/data-placement.html)
 
-[Zeppelin的数据分布方式（未完）](http://)
+[Decentralized Placement of Replicated Data](https://whoiami.github.io/DPRD)
 
 [Zeppelin不是飞艇之元信息节点](http://catkang.github.io/2018/01/19/zeppelin-meta.html)
 
