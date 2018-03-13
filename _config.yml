@@ -14,10 +14,10 @@ author:
   github: http://github.com/CatKang
 
 # 站点信息
-title: CatKang的博客 
-description: Out of three sounds he frame, not a fourth sound, but a star
-url: http://catkang.github.io/
-rss_url: /feed.xml
+title: "CatKang的博客"
+description: "Out of three sounds he frame, not a fourth sound, but a star"
+baseurl: ""
+url: "http://catkang.github.io/"
 
 # avatar头像及Favicon
 avatar: https://avatars2.githubusercontent.com/u/4082238?v=3&s=460
