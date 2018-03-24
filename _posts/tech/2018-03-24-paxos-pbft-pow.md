@@ -18,6 +18,8 @@ keywords: Paxos, PBFT, 区块链，一致性，共识算法，工作量证明，
 
 
 
+
+
 ## **故障模型**
 
 正式开始之前，还需要了解分布式系统中几个常见的故障模型，这也是这几个不同算法存在的本质原因。按照最理想到最现实的顺序大体有以下几种：
@@ -58,7 +60,7 @@ keywords: Paxos, PBFT, 区块链，一致性，共识算法，工作量证明，
 
 
 
-## PBFT
+## **PBFT**
 
 如果将Paxos面对的故障模型放宽到Byzantine Failures，即可能存在一定量的恶意节点：
 
@@ -90,7 +92,9 @@ PBFT的算法过程如下图，假设最多有f个恶意节点：
 
 
 
-## 区块链共识算法
+
+
+## **区块链共识算法**
 
 PBFT虽然已经解决了拜占庭问题，但有两个明显的缺陷：
 
@@ -120,7 +124,7 @@ PBFT虽然已经解决了拜占庭问题，但有两个明显的缺陷：
 
 ![Pow](https://i.imgur.com/kbE3Xuz.png)
 
-## 总结
+## **总结**
 
 无论Paxos，PBFT还是Pow，都是要解决不同网络环境下的一致性问题，而一致性问题的重点在**大多数**，无论正常的处理流程还是故障恢复流程，都依赖两个不同的**大多数**一定有交集的特性。
 
@@ -140,7 +144,7 @@ PBFT虽然已经解决了拜占庭问题，但有两个明显的缺陷：
 
 
 
-## 参考
+## **参考**
 
 [Paxos made simple](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0ahUKEwjUx7L9_-XXAhUES7wKHbENAw8QFggnMAA&url=https%3a%2f%2flamport%2eazurewebsites%2enet%2fpubs%2fpaxos-simple%2epdf&usg=AOvVaw2LqxhZNPEfgaMeyvZEm9xs)
 
