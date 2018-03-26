@@ -1,28 +1,46 @@
-permalink: /:year/:month/:day/:title.html
-markdown: kramdown
-highlighter: rouge
+# Site settings
+title: CatKang的博客
+email: beijingwangkang@hotmail.com
+description: Out of three sounds he frame, not a fourth sound, but a star
+baseurl: "" # the subpath of your site, e.g. /blog/
+url: http://catkang.github.io/
+rss_url: /pages/feed.xml
+author: Kang Wang
 
-kramdown:
-  input: GFM
+# Sidebar filter
+# Choose 'tag' or 'category' as filter in sidebar.
+filter: 'category'
+recent_num: 20
 
-# 作者信息
-author: 
-  name: 王康
-  email: beijingwangkang@hotmail.com
-  link: http://catkang.github.io/
-  weibo: 
-  github: http://github.com/CatKang
+# Social account
+weibo: 
+github: CatKang
+linkedin: 
 
-# 站点信息
-title: CatKang
-description: "Out of three sounds he frame, not a fourth sound, but a star"
-baseurl: ""
-url: "http://catkang.github.io/"
-
-# avatar头像及Favicon
+# avatar and Favicon
 avatar: https://avatars2.githubusercontent.com/u/4082238?v=3&s=460
 favicon: https://avatars2.githubusercontent.com/u/4082238?v=3&s=460
 
-# disqus 设置
+# disqus config
 disqus:
   shortname: kangcat
+
+# google analytics config
+ga:
+  id: UA-77540729-2
+
+# Build settings
+permalink: /:year/:month/:day/:title.html
+markdown: kramdown
+highlighter: rouge
+mathjax: disabled
+sass:
+  style: compressed
+
+# Jekyll Plugin
+# https://help.github.com/articles/adding-jekyll-plugins-to-a-github-pages-site/
+gems:
+  - jekyll-sitemap
+  - jekyll-seo-tag
+  - jekyll-feed
+

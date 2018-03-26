@@ -1,0 +1,38 @@
+
+#menu
+  display: block
+  position: fixed
+  top: $menu-top
+  right: $menu-right
+  z-index: 30
+  width: $menu-size
+  height: $menu-size
+  padding: 0
+  background: transparent
+  border: none
+  border-radius: 2px
+  outline: none
+  overflow: hidden
+  cursor: pointer
+  &-icons
+    display: block
+    width: 200%
+    height: $menu-size
+    margin-left: -100%
+    @extend %icon
+    font-size: 24px
+    line-height: $menu-size
+    color: #fff
+    background: $sidebar-bg
+    overflow: hidden
+    &:before
+      @extend %icon-enlarge2
+      float: left
+      width: 50%
+    &:after
+      @extend %icon-shrink2
+      float: left
+      width: 50%
+
+  &.open > &-icons
+    transform: translateX(50%)

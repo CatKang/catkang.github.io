@@ -1,0 +1,35 @@
+---
+layout: compress
+---
+<!DOCTYPE html>
+<html>
+  {% include head.html %}
+  <body>
+    {% include sidebar.html %}
+
+    <main id="main" class="open">
+      {{ content }}
+
+      <div class="footer">
+        <div class="container">
+          <p class="footer-entry">All content is licensed under <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA</a></p>
+          <p class="footer-entry">Buit with <a href="http://jekyllrb.com/" target="_blank">Jekyll</a> and <a href="https://github.com/P233/3-Jekyll" target="_blank">3-Jekyll theme</a> • Hosted on <a href="https://pages.github.com/" target="_blank">Github</a></p>
+        </div>
+      </div>
+    </main>
+
+    <button id="menu" class="open">
+      <span id="menu-icons"></span>
+    </button>
+
+    <button id="post-toc-menu">
+      <span id="post-toc-menu-icons"></span>
+    </button>
+    <div id="post-toc">
+      <span id="post-toc-title">Table of Contents</span>
+      <ul id="post-toc-ul"></ul>
+    </div>
+
+    {% include scripts.html %}
+  </body>
+</html>
