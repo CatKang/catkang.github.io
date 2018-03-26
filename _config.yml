@@ -13,9 +13,10 @@ filter: 'category'
 recent_num: 20
 
 # Social account
-weibo: 
 github: CatKang
-linkedin: 
+linkedin: kang-wang-b0357072
+zhihu: meng-fei-76
+stackoverflow: 2682705/catkang
 
 # avatar and Favicon
 avatar: https://avatars2.githubusercontent.com/u/4082238?v=3&s=460
