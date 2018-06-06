@@ -33,28 +33,28 @@ keywords: 一致性, Consistency, Raft, Quorum
 
 > P2. If a proposal with value v is chosen, then every higher-numbered pro- posal that is chosen has value v.
 
-算法细节上，Paxos要求每个propose需要通过第一阶段的Propose及Promise过程在得到大多数节点对自己propose num认可的同时，也获得可能存在的之前的最大propose num发起的value，并且**用自己的更大的propose num对相同的value进行第二阶段的重新提交**。这一步非常关键，试想这样一种场景，一个拥有三个acceptor的Paxos集群中，三个acceptor，a1、a2、a3可能会由于接收到消息的顺序分别接受不同propose的不同value：
+算法细节上，Paxos要求每个propose需要通过第一阶段的Propose及Promise过程在得到大多数节点对自己propose num认可的同时，也获得可能存在的之前的最大propose num发起的value，并且**用自己的更大的propose num对相同的value进行第二阶段的重新提交**。这一步非常关键，试想这样一种场景，一个拥有三个acceptor的Paxos集群中，三个acceptor，a1，a3分别在不同的propose num accept不同的value：
 
 ```
 a1: (v1, pn=1)
-a2: (v2, pn=2)
-a3: (v3, pn=3) 
+a2: 
+a3: (v2, pn=2) 
 ```
 
-此时a3宕掉，新的proposer p4选取新的pn=4，尝试让集群达成一致，由于a3无法响应，p4从a1，a2获得当前最大pn的值为(v2, pn=2)，假设p4没有用自己的pn提交并最终Commit，则会出现：
+此时a3宕掉，新的proposer p3选取新的pn=3，尝试让集群达成一致，由于a3无法响应，p3从a1，a2获得当前最大pn的值为(v1, pn=1)，假设p2没有用自己的pn提交并最终Commit，则会出现：
 
 ```
-a1: (v2, pn=2)
-a2: (v2, pn=2)
-a3: (v3, pn=3)  down 
+a1: (v1, pn=1)
+a2: (v1, pn=1)
+a3: (v2, pn=2)  down 
 ```
 
-若此时a3恢复，便可能被新的proposer p5因读取到集群最大pn的值为(v3, pn=3)而将之前p4的提交覆盖，损害一致性。因此Paxos要求p4用自己的pn重新提交v2：
+若此时a3恢复，便可能被新的proposer p4因读取到集群最大pn的值为(v2, pn=2)而将之前p4的提交覆盖，损害一致性。因此Paxos要求p3用自己的pn重新提交v1：
 
 ```
-a1: (v2, pn=4)
-a2: (v2, pn=4)
-a3: (v3, pn=3)  down 
+a1: (v1, pn=3)
+a2: (v1, pn=3)
+a3: (v2, pn=2)  down 
 ```
 
 
