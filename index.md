@@ -15,8 +15,9 @@ title: Welcome
 
 #### 产品介绍
 POLARDB是阿里云自主研发的新一代关系型数据库，是与MySQL完全兼容的Cloud Native设计的云托管数据库产品。POLARDB采用分布式存储引擎设计，性能最高可达到MySQL的6倍。
+
 作为其核心支撑和使能平台，PolarFS文件系统承担着发挥POLARDB特性至关重要的角色。PolarFS是一款具有超低延迟和高可用能力的分布式文件系统，其采用了轻量的用户空间网络和I／O栈构建，而弃用了对应的内核栈，目的是充分发挥RDMA和NVMe SSD等新兴硬件的潜力，极大地降低分布式非易失数据访问的端到端延迟。目前，PolarFS的3副本跨节点写入的访问总延迟已经非常接近单机本地PCIe SSD的延迟水平，成功地使得POLARDB在分布式多副本架构下仍然能够发挥出极致的性能。
-相关论文"PolarFS: An Ultra-low Latency and Failure Resilient Distributed File System for Shared Storage Cloud Database"也被数据库顶级会议VLDB 2018录用。
+相关论文 “PolarFS: An Ultra-low Latency and Failure Resilient Distributed File System for Shared Storage Cloud Database” 也被数据库顶级会议VLDB 2018录用。
 
 
 
@@ -37,3 +38,6 @@ POLARDB是阿里云自主研发的新一代关系型数据库，是与MySQL完�
 - 具备流利的英文读写能力，对新技术有学习的渴望;
 - 熟悉计算机体系结构，理解硬件的工作原理，有 RDMA，3DX point，NVMe等新硬件开发和调试经验者优先
 - 熟悉Linux或FreeBSD的内核代码， 尤其是IO stack相关的代码者优先。
+
+
+职位包括P5到P8，及2019年实习生, 相关简历可以发送到邮箱 beijingwangkang@hotmail.com
