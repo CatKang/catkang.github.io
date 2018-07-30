@@ -1,6 +1,10 @@
-# 如何验证线性一致性
-
-
+---
+layout: post
+title: 如何验证线性一致性
+category: 技术
+tags: [线性一致性, Linearizability, 分布式系统, WG, WGL, P-compositionality]
+keywords: 线性一致性, Linearizability, 分布式系统, WG, WGL, P-compositionality
+---
 
 线性一致性（Linearizability）是分布式系统中常见的一致性保证。那么如何验证系统是否正确地提供了线性一致性服务呢？本文希望从‘什么是线性一致性’，‘如何验证线性一致性’，问题复杂度，常见的通用算法，以及工程实现五个部分，直观、易懂地回答这个问题。
 
