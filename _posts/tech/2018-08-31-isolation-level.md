@@ -5,7 +5,7 @@ category: 技术
 tags: [Isolation Level，Transaction]
 keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control，Transaction
 ---
-	
+
 
 事务隔离是数据库系统设计中根本的组成部分，本文主要从标准层面来讨论隔离级别的划分方式，先解释事务隔离分级的原因以及标准制定的目标；之后概述其发展历史；最后介绍Atul Adya给出的比较合理的隔离级别定义。
 
@@ -30,7 +30,7 @@ keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control�
 
 ### ANSI SQL标准：基于异象
 
-[ANSI](http://www.adp-gmbh.ch/ora/misc/isolation_level.html)**先定义不同级别的异象(phenomenas)， 并依据能避免多少异象来划分隔离标准**。其定义的异象包括：
+[ANSI](http://www.adp-gmbh.ch/ora/misc/isolation_level.html)先定义不同级别的异象(phenomenas)， 并依据能避免多少异象来划分隔离标准。其定义的异象包括：
 
 - 脏读（Dirty Read）: 读到了其他事务还未提交的数据；
 - 不可重复读（Non-Repeatable/Fuzzy Read）：由于其他事务的修改或删除，对某数据的两次读取结果不同； 
@@ -46,7 +46,7 @@ keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control�
 
 [A Critique of ANSI SQL Isolation Levels](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-95-51.pdf)一文中对ANSI的标准进行了系统的批判，指出其存在两个致命的问题：
 
-##### 1，不完整，缺少对Dirty Write的排除
+**1，不完整，缺少对Dirty Write的排除**
 
 ANSI SQL标准中所有的隔离级别都没有将Dirty Write这种异象排除在外，所谓Dirty Write指的是两个未提交的事务先后对同一个对象进行了修改。而Dirty Write之所以是一种异象，主要因为他会导致下面的一致性问题：
 
@@ -54,7 +54,7 @@ ANSI SQL标准中所有的隔离级别都没有将Dirty Write这种异象排除�
 
 这段历史中，假设有相关性约束x=y，T1尝试将二者都修改为1，T2尝试将二者都修改为2，顺序执行的结果应该是二者都为1或者都为2，但由于Dirty Write的发生，最终结果变为x=2，y=1，不一致。
 
-##### 2，歧义
+**2，歧义**
 
 ANSI SQL的英文表述有歧义。以Dirty Read为例，标准中提到假设T1读到了T2未提交的值，如果T2最终abort，那么T1读到的就是脏数据。但如果T2最终commit了，是不是就没有问题了？
 
@@ -76,10 +76,10 @@ H1历史中，假设有相关性约束x+y=100，T1尝试将(x=50, y=50)修改为
 
 此时定义已经很严格了，直接阻止了对应的读写组合顺序。仔细可以看出，此时得到的其实就是基于锁的定义:
 
-- Read Uncommitted，阻止P0			  <->				整个事务阶段对x加长写锁
-- Read Commited，阻止P0，P1                     <->			        短读锁 + 长写锁
-- Repeatable Read，阻止P0，P1，P2           <->                                长读锁 + 短谓词锁 + 长写锁
-- Serializable，阻止P0，P1，P2，P3             <->                                长读锁 + 长谓词锁 + 长写锁
+- Read Uncommitted，阻止P0：整个事务阶段对x加长写锁
+   Read Commited，阻止P0，P1：短读锁 + 长写锁
+- Repeatable Read，阻止P0，P1，P2：长读锁 + 短谓词锁 + 长写锁
+- Serializable，阻止P0，P1，P2，P3：长读锁 + 长谓词锁 + 长写锁
 
 
 
@@ -108,7 +108,7 @@ H1历史中，假设有相关性约束x+y=100，T1尝试将(x=50, y=50)修改为
 
 Adya在[Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions](http://pmg.csail.mit.edu/papers/adya-phd.pdf)中给出了基于序列化图得定义，过程为先定义冲突关系；并以冲突关系为有向边形成序列化图；再以图中的环类型定义不同的异象；最后通过阻止不同的异象来定义隔离级别。
 
-#### 冲突关系：
+### 冲突关系：
 
 根据上述不同异象涉及的访问冲突，定义三种冲突关系：
 
@@ -118,7 +118,7 @@ Adya在[Weak Consistency: A Generalized Theory and Optimistic Implementations fo
 
 
 
-#### 序列化图（Direct Serialization Graph, DSG）
+### 序列化图（Direct Serialization Graph, DSG）
 
 每个节点表示一个事务，每个有向边表明存在一种冲突关系，有向边T1 -> T2的意义是若要避免该冲突导致的不一致，需要T1先于T2提交，因此通过依次从图中去掉没有入边的节点，可以完成事务的序列化，如下图的序列化顺序为：T1，T2，T3：
 
@@ -132,7 +132,7 @@ Adya在[Weak Consistency: A Generalized Theory and Optimistic Implementations fo
 
 
 
-#### 基于DSG的异象定义：
+### 基于DSG的异象定义：
 
 按照之前的讨论，这里的异象定义尽量最小化到上一节示意图中的灰色部分，下面依次对每个异象定义最小化：
 
@@ -154,7 +154,7 @@ Dirty Read异象的最小集包括三个部分G1 = G1a + G1b + G1c：
 
 ![Anti-dependency Cycles](http://catkang.github.io/assets/img/isolation_level/anti_dependency_cycles.png)
 
-#### 对应的隔离级别：
+### 对应的隔离级别：
 
 - PL-1（Read Uncommitted）：阻止G0
 - PL-2（Read Commited）：阻止G1
