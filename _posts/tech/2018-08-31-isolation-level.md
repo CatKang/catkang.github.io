@@ -1,6 +1,6 @@
 ---
 layout: post
-title: 数据库事务的隔离级别
+title: 浅析事务隔离级别标准
 category: 技术
 tags: [Isolation Level，Transaction]
 keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control，Transaction
@@ -174,6 +174,16 @@ Dirty Read异象的最小集包括三个部分G1 = G1a + G1b + G1c：
 ### 2， Snapshot Ioslation
 
 事务开始的时候拿一个Start-Timestamp的snapshot，所有的操作都在这个snapshot上做，当commit的时候拿Commit-Timestamp，检查所有有冲突的值不能再[Start- Timestamp, Commit-Timestamp]被提交，否则abort。长久以来，Snapshot Ioslation一直被认为是Serializable，但其实Snapshot Ioslation下还会出现Write Skew的异象。之后的文章会详细介绍如何从Snapshot Ioslation出发获得Serializable。
+
+
+
+# 总结
+
+对于事务隔离级别的标准，数据库的前辈们进行了长久的探索：
+
+- [ANSI isolation levels](http://www.adp-gmbh.ch/ora/misc/isolation_level.html)定义了异象标准，并根据所排除的异象，定义了，Read Uncommitted、Read Committed、Repeatable Read、Serializable四个隔离级别；
+- [A Critique of ANSI SQL Isolation Levels](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-95-51.pdf)认为ANSI的定义并没将有多object约束的异象排除在外，并选择用更严格的基于Lock的定义扩大了每个级别限制的范围；
+- [Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions](http://pmg.csail.mit.edu/papers/adya-phd.pdf)认为基于Lock的定义过多的扩大了限制的范围，导致正常情况被排除在外，从而限制了Optimize类型并行控制的使用；指出解决该问题的关键是要有模型能准确地描述这种多Object约束；并给出了基于序列化图的定义方式，将每个级别限制的范围最小化。
 
 
 
