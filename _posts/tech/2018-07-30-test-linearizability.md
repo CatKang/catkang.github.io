@@ -50,7 +50,7 @@ MAURICE P. HERLIHY 和 JEANNETTE M. WING曾在“ Linearizability: A Correctnes
 
 ## 问题复杂度
 
-直观来看，这个问题是一个排序问题，极端情况下的时间复杂度为O(N!)。事实上，Phillip B. Gibbons和Ephraim Korach在[Testing Shared Memories](https://epubs.siam.org/doi/pdf/10.1137/S0097539794279614)中已经证明其是一个NP-Complete问题。虽然Gavin Lowe在[Testing for Linearizability](http://www.cs.ox.ac.uk/people/gavin.lowe/LinearizabiltyTesting/paper.pdf)中给出了一些特殊限制下的多项式甚至是线性复杂度的算法，但在通用场景下，**判定线性一致性并不是一个容易解决的问题，其搜索空间会随着执行历史的规模急速膨胀。**
+直观来看，这个问题是一个排列问题，极端情况下的时间复杂度为O(N!)。事实上，Phillip B. Gibbons和Ephraim Korach在[Testing Shared Memories](https://epubs.siam.org/doi/pdf/10.1137/S0097539794279614)中已经证明其是一个NP-Complete问题。虽然Gavin Lowe在[Testing for Linearizability](http://www.cs.ox.ac.uk/people/gavin.lowe/LinearizabiltyTesting/paper.pdf)中给出了一些特殊限制下的多项式甚至是线性复杂度的算法，但在通用场景下，**判定线性一致性并不是一个容易解决的问题，其搜索空间会随着执行历史的规模急速膨胀。**
 
 
 
