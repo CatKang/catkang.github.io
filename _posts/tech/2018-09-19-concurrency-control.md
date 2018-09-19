@@ -104,7 +104,7 @@ Scheduler对冲突的判断还需要配合**Lock Table**，如下图所示是一
 - begin-ts及end-ts分别记录该版本创建和过期时的事务TID
 - pointer: 指向该对象其他版本的链表
 
-![image-20180918164913619](http://catkang.github.io/assets/img/concurrency_control/MVCC.png)
+![MVCC](http://catkang.github.io/assets/img/concurrency_control/MVCC.svg)
 
 其基本的实现思路是，每次对数据库对象的写操作都生成一个新的版本，用自己的TID标记新版本begin-ts及上一个版本的end-ts，并将自己加入链表。读操作对比自己的TID与数据版本的begin-ts，end-ts，找到其可见最新的版本进行访问。根据乐观程度多版本的机制也分为三类：
 
