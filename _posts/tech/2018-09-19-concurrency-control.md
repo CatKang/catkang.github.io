@@ -53,13 +53,9 @@ keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control�
 
 ![image-20180918152859757](http://catkang.github.io/assets/img/concurrency_control/image-20180918152859757.png)
 
-
-
 Scheduler对冲突的判断还需要配合**Lock Table**，如下图所示是一个可能得Lock Table信息示意，每一个被访问的数据库对象都会在Lock Table中有对应的表项，其中记录了当前最高的持有锁的模式、是否有事务在Delay、以及持有或等待对应锁的事务链表；同时对链表中的每个事务记录其事务ID，请求锁的模式以及是否已经持有该锁。Scheduler会在加锁请求到来时，通过查找Lock Table判断能否加锁或是Delay，如果Delay需要插入到链表中。对应的当事务Commit或Abort后需要对其持有的锁进行释放，并按照不同的策略唤醒等待队列中Delay的事务。
 
 ![image-20180918115909934](http://catkang.github.io/assets/img/concurrency_control/image-20180918115909934.png)
-
-
 
 
 
@@ -82,8 +78,6 @@ Scheduler对冲突的判断还需要配合**Lock Table**，如下图所示是一
 
 
 
-
-
 ## 基于Validation（OCC）
 
 基于Validation的方式，有时也称为Optimistic Concurrency Control(OCC)，大概是因为它比基于Timestamp的方式要更加的乐观，将冲突检测推迟到Commit前才进行。不同于Timestamp方式记录每个对象的读写时间，Validation的方式记录的是每个事物的读写操作集合。并将事物划分为三个阶段：
@@ -103,8 +97,6 @@ Scheduler对冲突的判断还需要配合**Lock Table**，如下图所示是一
 
 
 
-
-
 ## Multiversion（MVCC）
 
 对应上述每种乐观程度，都可以有多版本的实现方式，多版本的优势在于，可以让**读写事务与只读事务互不干扰，因而获得更好的并行度**，也正是由于这一点成为几乎所有主流数据库的选择。为了实现多版本的并发控制，需要给每个事务在开始时分配一个唯一标识TID，并对数据库对象增加以下信息：
@@ -116,14 +108,14 @@ Scheduler对冲突的判断还需要配合**Lock Table**，如下图所示是一
 
 其基本的实现思路是，每次对数据库对象的写操作都生成一个新的版本，用自己的TID标记新版本begin-ts及上一个版本的end-ts，并将自己加入链表。读操作对比自己的TID与数据版本的begin-ts，end-ts，找到其可见最新的版本进行访问。根据乐观程度多版本的机制也分为三类：
 
-##### 1. Two-phase Locking (MV2PL)
+#### 1. Two-phase Locking (MV2PL)
 与单版本的2PL方式类似，同样需要Lock Table跟踪当前的加锁及等待信息，另外给数据库对象增加了多版本需要的begin-ts和end-ts信息。写操作需要对最新的版本加写锁，并生成新的数据版本。读操作对找到的最新的可见版本加读锁访问。
 
-##### 2. Timestamp Ordering (MVTO)
+#### 2. Timestamp Ordering (MVTO)
 
 对比单版本的Timestamp方式对每个数据库对象记录的Read TimeStamp(RT)，Write TimeStamp(WT)，Commited flag(C)信息外增加了标识版本的begin-ts和end-ts，同样在事务开始前获得唯一递增的Start TimeStamp（TS），写事务需要对比自己的TS和可见最新版本的RT来验证顺序，写入是创建新版本，并用自己的TS标记新版本的WT，不同于单版本，这个WT信息永不改变。读请求读取自己可见的最新版本，并在访问后修改对应版本的RT，同样通过判断C flag信息避免Read Uncommitted。
 
-##### 3. Optimistic Concurrency Control (MVOCC)
+#### 3. Optimistic Concurrency Control (MVOCC)
 
 对比单版本的Validataion（OCC）方式，同样分为三个阶段，Read阶段根据begin-ts，end-ts找到可见最新版本，不同的是在多版本下Read阶段的写操作不在私有空间完成，而是直接生成新的版本，并在其之上进行操作，由于其commit前begin-ts为INF，所以不被其他事务课件；Validation阶段分配新的Commit TID，并以之判断是否可以提交；通过Validation的事务进入Write阶段将begin-ts修改为Commit TID。
 
@@ -134,8 +126,6 @@ Scheduler对冲突的判断还需要配合**Lock Table**，如下图所示是一
 相对于悲观的锁实现，乐观的机制可以在冲突发生较少的情况下获得更好的并发效果，然而一旦冲突，需要事务回滚带来的开销要远大于悲观实现的阻塞，因此他们各自适应于不同的场景。而多版本由于避免读写事务与只读事务的互相阻塞， 在大多数数据库场景下都可以取得很好的并发效果，因此被大多数主流数据库采用。可以看出无论是乐观悲观的选择，多版本的实现，读写锁，两阶段锁等各种并发控制的机制，归根接地都是**在确定的隔离级别上尽可能的提高系统吞吐，可以说[隔离级别](http://catkang.github.io/2018/08/31/isolation-level.html)选择决定上限，而并发控制实现决定下限。**
 
 本文从乐观悲观的程度以及单版本多版本选择上对可用的并发控制机制选择进行了划分，并介绍了各种机制大体的设计思路，而距离真正的实现还有比较大的距离，包括实现细节和配套机制。比如常用的各种类型的MVCC中，由于多版本的存在而带来的一些列如垃圾回收、索引管理、版本存储等相关问题。我们之后将以MyRocks为例看看并发控制在工程上的具体实现。
-
-
 
 
 
