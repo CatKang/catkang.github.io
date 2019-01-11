@@ -70,26 +70,28 @@ Redo-Only同样有Page内并发的问题，同Page中的多个不同事务，只
 
 #### Force and Steal
 
-从上面看出，**Redo和Undo内容分别可以保证Durability和Atomic两个特性，其中一种的缺失需要用严格的刷盘顺序来弥补**。我们将Commit时是否需要强制刷盘称为Force or No-Force，Commit前数据是否可以提前刷盘，称为Steal or No-Steal，如果把Shadow-Paging看做是No-Redo+No-Undo，上面提到的故障恢复机制的刷盘需要如下图所示：
+从上面看出，**Redo和Undo内容分别可以保证Durability和Atomic两个特性，其中一种的缺失需要用严格的刷盘顺序来弥补**。我们将Commit时是否需要强制刷盘称为**Force or No-Force**，Commit前数据是否可以提前刷盘，称为**Steal or No-Steal**，如果把Shadow-Paging看做是No-Redo+No-Undo，上面提到的故障恢复机制的刷盘需要如下图所示：
 
 TODO 图
+
+#### Loggical or Physical
 
 
 
 ## ARIES，一统江湖
 
-1992年，IBM的研究员们发表了《[ARIES: a transaction recovery method supporting fine-granularity locking and partial rollbacks using write-ahead logging](https://cs.stanford.edu/people/chrismre/cs345/rl/aries.pdf)》	[2]，ARIES本质是一种Redo-Undo的WAL实现。
+1992年，IBM的研究员们发表了《[ARIES: a transaction recovery method supporting fine-granularity locking and partial rollbacks using write-ahead logging](https://cs.stanford.edu/people/chrismre/cs345/rl/aries.pdf)》	[2]，其中提出的ARIES逐步成为磁盘数据库实现故障恢复的标配，ARIES本质是一种Redo-Undo的WAL实现。
+
+**Normal过程：**修改数据之前先追加Log记录，Log内容同时包括Redo和Undo信息，并通过PrevLSN指针指向属于当前事务的上一条Log记录位置，每个日志记录产生对应一个标记其在日志中位置的递增的LSN（Log Sequence Number）；数据Page中记录最后修改的日志项LSN，以此来判断Page中的内容的新旧程度。故障恢复阶段需要通过Log中的内容恢复数据库状态，为了减少恢复时需要处理的日志量，ARIES会在正常运行期间周期性的生成Checkpoint，Checkpoint中除了当前的日志LSN之外，还需要记录当前活跃事务的最新LSN，以及所有脏页，供恢复时决定重放Redo的开始位置。需要注意的是，由于生成Checkpoint时数据库还在正常提供服务（Fuzzy Checkpoint），其中记录的活跃事务及Dirty Page信息并不一定准确，因此需要Recovery阶段通过Log内容进行修正。
+
+**Recover过程：**故障恢复包含三个阶段：Analysis，Redo和Undo。Analysis阶段的任务主要是利用Checkpoint及Log中的信息确认后续Redo和Undo阶段的操作范围，通过Log修正Checkpoint中记录的Dirty Page集合信息，并用其中涉及最小的LSN位置作为下一步Redo的开始位置RedoLSN。同时修正Checkpoint中记录的活跃事务集合（未提交事务），作为Undo过程的回滚对象；Redo阶段从Analysis获得的RedoLSN出发，重放所有的Log中的Redo内容，注意这里也包含了未Commit事务；最后Undo阶段对所有未提交事务利用Undo信息进行回滚，通过Log的PrevLSN可以顺序找到事务所有需要回滚的修改。
+
+除此之外，ARIES还包含了许多优化设计，例如通过特殊的日志记录类型CLRs避免嵌套Recovery带来的日志膨胀，支持细粒度锁，并发Recovery等。[3]认为，ARIES有两个主要的设计目标：
+
+1. **Feature：提供丰富灵活的实现事务的接口：**包括提供灵活的存储方式、通过提供细粒度的锁来获得高并发、支持基于Savepoint的事务部分回滚、通过Logical-Undo以获得更高的并发、通过Page-Oriented Redo实现简单的可并发的Recovery过程。
+2. **Performance：充分利用内存和磁盘介质特性，获得极致的性能：**采用No-Force避免大量同步的磁盘随机写、采用Steal及时重用宝贵的内存资源、基于Page来简化恢复和缓存管理。
 
 
-
-概述
-
-
-
-贡献
-
-1. aims to provide a rich interface for executing scalable, ACID transactions
-2. aims to maximize performance on disk-based storage systems.
 
 
 
@@ -97,16 +99,26 @@ TODO 图
 
 ## NVM带来的机遇与挑战
 
+从Shadow Paging到WAL，再到ARIES，一直围绕着两个主题：减少同步写以及尽量用顺序写代替随机写。而这些正是由于磁盘性能远小于内存，且磁盘顺序访问远好于随机访问。然而随着NVM磁盘的出现以及对其成为主流的预期，使得我们必须要重新审视我们所做的一切。
 
+相对于传统的HDD及SSD，NVM最大的优势在于：
+
+- 接近内存的高性能，顺序访问和随机访问差距不大
+- 基于字节而不是Block的接口
+
+因此，为了利用磁盘顺序写性能和减少同步写的缓存管理机制已经变得多余，而为了迁就磁盘Block而维护Page所带来的复杂度也有机会去掉。近年来，众多的研究尝试为NVM量身定制更合理的故障恢复机制，我们这几介绍其中两种比较有代表性的研究成果，MARS希望充分利用NVM并发及内部带宽的优势，将更多的任务交给硬件实现；而WBL则尝试重构当前的Log方式。
 
 
 
 ## MARS
 
+["From ARIES to MARS: Transaction support for next-generation, solid-state drives." ](https://cseweb.ucsd.edu/~swanson/papers/SOSP2013-MARS.pdf)
+
 
 
 ## WBL
 
+[ "Write-behind logging." ](http://www.vldb.org/pvldb/vol10/p337-arulraj.pdf)
 
 
 ## 总结
