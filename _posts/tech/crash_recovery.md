@@ -99,20 +99,33 @@ TODO 图
 
 ## NVM带来的机遇与挑战
 
-从Shadow Paging到WAL，再到ARIES，一直围绕着两个主题：减少同步写以及尽量用顺序写代替随机写。而这些正是由于磁盘性能远小于内存，且磁盘顺序访问远好于随机访问。然而随着NVM磁盘的出现以及对其成为主流的预期，使得我们必须要重新审视我们所做的一切。
+从Shadow Paging到WAL，再到ARIES，一直围绕着两个主题：减少同步写以及尽量用顺序写代替随机写。而这些正是由于磁盘性能远小于内存，且磁盘顺序访问远好于随机访问。然而随着NVM磁盘的出现以及对其成为主流的预期，使得我们必须要重新审视我们所做的一切。相对于传统的HDD及SSD，NVM最大的优势在于：
 
-相对于传统的HDD及SSD，NVM最大的优势在于：
+- 接近内存的高性能
+- 顺序访问和随机访问差距不大
+- 按字节寻址而不是Block
 
-- 接近内存的高性能，顺序访问和随机访问差距不大
-- 基于字节而不是Block的接口
+这种情况下，再来看ARIES的实现：
 
-因此，为了利用磁盘顺序写性能和减少同步写的缓存管理机制已经变得多余，而为了迁就磁盘Block而维护Page所带来的复杂度也有机会去掉。近年来，众多的研究尝试为NVM量身定制更合理的故障恢复机制，我们这几介绍其中两种比较有代表性的研究成果，MARS希望充分利用NVM并发及内部带宽的优势，将更多的任务交给硬件实现；而WBL则尝试重构当前的Log方式。
+- No-force and Steal：同时维护Redo， Undo和数据造成的三倍写放大，来换取磁盘顺序写的性能，但在NVM上这种取舍变得很不划算；
+- Pages：为了迁就磁盘基于Block的访问接口，采用Page的存储管理方式，而内存本身是按字节寻址的，因此，这种适配也带来很大的复杂度。在同样按字节寻址的NVM上可以消除。
+
+近年来，众多的研究尝试为NVM量身定制更合理的故障恢复机制，我们这几介绍其中两种比较有代表性的研究成果，MARS希望充分利用NVM并发及内部带宽的优势，将更多的任务交给硬件实现；而WBL则尝试重构当前的Log方式。
 
 
 
 ## MARS
 
-["From ARIES to MARS: Transaction support for next-generation, solid-state drives." ](https://cseweb.ucsd.edu/~swanson/papers/SOSP2013-MARS.pdf)
+发表在2013年的SOSP上的《["From ARIES to MARS: Transaction support for next-generation, solid-state drives." ](https://cseweb.ucsd.edu/~swanson/papers/SOSP2013-MARS.pdf)》提出了一种尽量保留ARIES特性，但更适合NVM的故障恢复算法MARS[3]。MARS取消了Undo Log，Redo Log也不同于传统的Append-Only，而是可以随机修改的。如下图所示，每个事务会占有一个唯一的TID，对应的Metadata中记录了Log和Data的位置。
+
+![image-20190113234438400](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20190113234438400.png)
+
+正常访问时，所有的数据修改都在对应的Redo Log中进行，不影响真实数据，由于没有Undo Log，需要采用类似于No-Steal的方式，阻止Commit前的数据写回；Commit时会先设置事务状态为COMMITTED，之后利用NVM的内部带宽将Redo中的所有内容并发拷贝回Metadata中记录的数据位置。如果在COMMITED标记设置后发生故障，恢复时可以根据Redo Log中的内容重放：
+
+- Durability： Redo实现，故障后重放Redo；
+- Atomic：未Commit事务的修改只存在于Redo Log，重启后会被直接丢弃。
+
+可以看出，MARS的Redo虽然称之为Log，但其实已经不同于传统意义上的顺序写文件，允许随机访问，更像是一种临时的存储空间，类似于Shadow的东西。之所以在Commit时进行数据拷贝而不是像Shadow Paging一样的元信息修改，笔者认为是为了保持数据的局部性，并且得益于硬件优异的内部带宽。
 
 
 
