@@ -1,3 +1,11 @@
+---
+layout: post
+title: 庖丁解InnoDB之REDO LOG
+category: 技术
+tags: [Database, MySQL, InnoDB, REDO]
+keywords: MySQL，InnoDB，REDO，redo, redo log
+---
+
 # 庖丁解InnoDB之REDO LOG
 
 [数据库故障恢复机制的前世今生](http://catkang.github.io/2019/01/16/crash-recovery.html)中介绍了，磁盘数据库为了在保证数据库的原子性(A, Atomic) 和持久性(D, Durability)的同时，还能以灵活的刷盘策略来充分利用磁盘顺序写的性能，会记录REDO和UNDO日志，即**ARIES**方法。本文将重点介绍REDO LOG的作用，记录的内容，组织结构，写入方式等内容，希望读者能够更全面准确的理解REDO LOG在InnoDB中的位置。本文基于MySQL 8.0代码。
@@ -30,9 +38,7 @@
 
 Double Write Buffer能够保证找到一个正确的Page状态，我们还需要知道这个状态对应REDO上的哪个记录，来避免对Page的重复修改。为此，InnoDB给每个REDO记录一个全局唯一递增的标号**LSN(Log Sequence Number)**。Page在修改时，会将对应的REDO记录的LSN记录在Page上（FIL_PAGE_LSN字段），这样恢复重放REDO时，就可以来判断跳过已经应用的REDO，从而实现重放的幂等。
 
-
-
-#3. REDO中记录了什么内容
+# 3. REDO中记录了什么内容
 
 知道了InnoDB中记录REDO的方式，那么REDO里具体会记录哪些内容呢？为了应对InnoDB各种各样不同的需求，到MySQL 8.0为止，已经有多达65种的REDO记录。用来记录这不同的信息，恢复时需要判断不同的REDO类型，来做对应的解析。根据REDO记录不同的作用对象，可以将这65中REDO划分为三个大类：作用于Page，作用于Space以及提供额外信息的Logic类型。
 
