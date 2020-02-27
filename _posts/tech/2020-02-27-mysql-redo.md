@@ -6,7 +6,7 @@ tags: [Database, MySQL, InnoDB, REDO]
 keywords: MySQL，InnoDB，REDO，redo, redo log
 ---
 
-# 庖丁解InnoDB之REDO LOG
+
 
 [数据库故障恢复机制的前世今生](http://catkang.github.io/2019/01/16/crash-recovery.html)中介绍了，磁盘数据库为了在保证数据库的原子性(A, Atomic) 和持久性(D, Durability)的同时，还能以灵活的刷盘策略来充分利用磁盘顺序写的性能，会记录REDO和UNDO日志，即**ARIES**方法。本文将重点介绍REDO LOG的作用，记录的内容，组织结构，写入方式等内容，希望读者能够更全面准确的理解REDO LOG在InnoDB中的位置。本文基于MySQL 8.0代码。
 
