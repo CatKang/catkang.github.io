@@ -38,7 +38,7 @@ keywords: 一致性, Consistency, Raft, Quorum
 
 
 
-![Status transition](http://catkang.github.io/assets/img/raft_subproblem/status_trans.png)
+![Status transition](http://catkang.github.io/assets/img/raft_subproblem/status_trans.jpg)
 
 如上图所示：
 
