@@ -25,7 +25,7 @@ keywords: lsm, leveldb, rocksdb, ssd
 
 也就是说，这个写放大的系数大概在几十到几百之间。那么收获的呢，通过下表中针对不同存储介质的写入测试数据，可以看出在传统的机械盘上顺序写的性能远远好于其随机写性能，这个性能差异接近一千倍。用数十倍的磁盘带宽损失换取近千倍的性能提升，在写入敏感的场景下这种交换的效果毋庸置疑。但不同的是，SSD盘相对具有较高的随机写能力，与顺序写的差距本身只有十倍左右，并且还可以通过并行IO进一步提升，因此这种交换就显得有些得不偿失。同时，由于反复的写入会带来SSD的磨损从而降低寿命。
 
-![磁盘IO性能](http://i.imgur.com/BvtRvou.png)
+![磁盘IO性能](http://catkang.github.io/assets/img/lsm_upon_ssd/io_perf.png)
 
 
 
@@ -41,7 +41,7 @@ keywords: lsm, leveldb, rocksdb, ssd
 
 **Key Value 分离存储**
 
-![Key Value分离](http://i.imgur.com/gstcosW.png)
+![Key Value分离](http://catkang.github.io/assets/img/lsm_upon_ssd/kv_split.png)
 
 仅将Key值存储在LSM中，而将Value区分存储在Log中，数据访问就变成了：
 
@@ -66,7 +66,7 @@ keywords: lsm, leveldb, rocksdb, ssd
 
 Compaction过程需要被删除的数据由于只是删除了Key，Value还保留在分开的Log中，这就需要异步的回收。可以看出LSM本身的Compaction其实也是垃圾回收的思路，所以通过良好设计的Value回收方式其实并不会过多的增加系统的额外负担。离线回收比较简单，扫描整个LSM对Value Log进行mark and sweep，但这相当于给系统带来了负载带来了陡峭的波峰，WiscKey论文又提出来了巧妙的在线回收方式：
 
-![在线回收方式](http://i.imgur.com/tSk27o5.png)
+![在线回收方式](http://catkang.github.io/assets/img/lsm_upon_ssd/recycle.png)
 
 其中head的位置是新的Block插入的位置，tail是Value回收操作的开始位置，垃圾回收过程被触发后，顺序从Tail开始读取Block，将有效的Block插入到Head。删除空间并后移Tail。可以看出，这里的回收方式由于需要将有效的数据重新Append，其实也带来了写放大，这就需要很好的权衡空间放大和写放大了，WiscKey建议系统根据删除修改请求的多少决定触发垃圾回收的时机。
 

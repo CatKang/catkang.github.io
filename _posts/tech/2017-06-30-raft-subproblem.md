@@ -38,7 +38,7 @@ keywords: 一致性, Consistency, Raft, Quorum
 
 
 
-![Status transition](http://i.imgur.com/UUdLcFa.jpg)
+![Status transition](http://catkang.github.io/assets/img/raft_subproblem/status_trans.png)
 
 如上图所示：
 
@@ -59,7 +59,7 @@ keywords: 一致性, Consistency, Raft, Quorum
 
 
 
-![Log Replication](http://i.imgur.com/8mY3FHu.jpg)
+![Log Replication](http://catkang.github.io/assets/img/raft_subproblem/replication.png)
 
 上图描述了一个Raft提案的执行过程：
 

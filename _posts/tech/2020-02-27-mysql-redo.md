@@ -74,8 +74,6 @@ Double Write Buffer能够保证找到一个正确的Page状态，我们还需要
 
 ![logic_redo](http://catkang.github.io/assets/img/innodb_redo/logic_redo.png)
 
-
-
 #### **物理REDO层**
 
 磁盘是块设备，InnoDB中也用Block的概念来读写数据，一个Block的长度OS_FILE_LOG_BLOCK_SIZE等于磁盘扇区的大小512B，每次IO读写的最小单位都是一个Block。除了REDO数据以外，Block中还需要一些额外的信息，下图所示一个Log Block的的组成，包括12字节的**Block Header**：前4字节中Flush Flag占用最高位bit，标识一次IO的第一个Block，剩下的31个个bit是Block编号；之后是2字节的数据长度，取值在[12，508]；紧接着2字节的First Record Offset用来指向Block中第一个REDO组的开始，这个值的存在使得我们对任何一个Block都可以找到一个合法的的REDO开始位置；最后的4字节Checkpoint Number记录写Block时的*next_checkpoint_number*，用来发现文件的循环使用，这个会在文件层详细讲解。Block末尾是4字节的**Block Tailer**，记录当前Block的Checksum，通过这个值，读取Log时可以明确Block数据有没有被完整写盘。

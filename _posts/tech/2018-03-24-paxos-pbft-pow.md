@@ -30,7 +30,7 @@ keywords: Paxos, PBFT, 区块链，一致性，共识算法，工作量证明，
 
 如下图([图来源](http://danielw.cn/history-of-distributed-systems-2))所示，三种错误模型的限制逐渐放宽，逐步复杂：
 
-![Fault Model](https://i.imgur.com/DKTbZLu.png)
+![Fault Model](http://catkang.github.io/assets/img/paxos_pbft_pow/consistency_mode.png)
 
 本文涉及的三种算法便是基于不同故障模型的产物：
 
@@ -71,11 +71,11 @@ keywords: Paxos, PBFT, 区块链，一致性，共识算法，工作量证明，
 
 就是PBFT(Practical Byzantine Fault Tolerance)算法所面临的环境了，先通过一个图([图来源](http://danielw.cn/history-of-distributed-systems-2))直观的了解PBFT实现的思路：既然恶意节点可能撒谎，就通过加密签名以及节点之间的相互转发来发现，如下右图。
 
-![Imgur](https://i.imgur.com/apVc44c.png)
+![PBFT1](http://catkang.github.io/assets/img/paxos_pbft_pow/pbft1.png)
 
 PBFT的算法过程如下图，假设最多有f个恶意节点：
 
-![PBFT](https://i.imgur.com/G3Uw1Kk.png)
+![PBFT2](http://catkang.github.io/assets/img/paxos_pbft_pow/pbft2.png)
 
 - Cient 向Primary发送Request
 - Primary向所有节点发送Pre-prepare消息，包括view号、sequence以及Requst消息；
@@ -109,7 +109,7 @@ PBFT虽然已经解决了拜占庭问题，但有两个明显的缺陷：
 - 因此引入了区块Block，每个Block中包含多个当前网络中的交易事务；
 - 每个区块会对当前区块事务以及前一个区块计算一个哈希值，从而将Block串成一个链表。这个哈希值也证明某一时刻某个事务的存在；
 
-![Bitcoin Timestamp Server](https://i.imgur.com/LSpxyvu.png)
+![Bitcoin Timestamp Server](http://catkang.github.io/assets/img/paxos_pbft_pow/pow1.png)
 
 现在问题变成了：**如何让集群中的大多数对同一个Block链达成一致。**在这样一个节点可以随时加入或退出的开放的网络环境中，基于节点数量的大多数判断不再适用。工作量证明（Proof-of-Work）用计算能力来确定**大多数**：
 
@@ -122,7 +122,7 @@ PBFT虽然已经解决了拜占庭问题，但有两个明显的缺陷：
   - 加快主链的生成速度，增加恶意节点难度，减少记账时间；
   - 对于拥有足够大量计算能力的节点，诚实的参与到主链的创建中比篡改Block能获得更大的收益，这就是属于博弈论的内容了。
 
-![Pow](https://i.imgur.com/kbE3Xuz.png)
+![Pow](http://catkang.github.io/assets/img/paxos_pbft_pow/pow2.png)
 
 这里的大多数是指**维持一定数量Block的主链领先的计算能力**。
 

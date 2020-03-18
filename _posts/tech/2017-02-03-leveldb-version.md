@@ -28,11 +28,11 @@ LeveDB用**Version**表示一个版本的元信息，Version中主要包括一�
 
 **VersionSet**是一个Version构成的双向链表，这些Version按时间顺序先后产生，记录了当时的元信息，链表头指向当前最新的Version，同时维护了每个Version的引用计数，被引用中的Version不会被删除，其对应的SST文件也因此得以保留，通过这种方式，使得LevelDB可以在一个稳定的快照视图上访问文件。VersionSet中除了Version的双向链表外还会记录一些如LogNumber，Sequence，下一个SST文件编号的状态信息。
 
-![VersionSet Version 示意图](http://i.imgur.com/30fGBHj.png)
+![VersionSet Version 示意图](http://catkang.github.io/assets/img/leveldb_version/overview.png)
 
 通过上面的描述可以看出，相邻Version之间的不同仅仅是一些文件被删除另一些文件被删除。也就是说将文件变动应用在旧的Version上可以得到新的Version，这也就是Version产生的方式。LevelDB用**VersionEdit**来表示这种相邻Version的差值。
 
- ![VersionEidt](http://i.imgur.com/LcSu4lW.png)
+ ![VersionEidt](http://catkang.github.io/assets/img/leveldb_version/version_edit.png)
 
 为了避免进程崩溃或机器宕机导致的数据丢失，LevelDB需要将元信息数据持久化到磁盘，承担这个任务的就是**Manifest**文件。可以看出每当有新的Version产生都需要更新Manifest，很自然的发现这个新增数据正好对应于VersionEdit内容，也就是说Manifest文件记录的是一组VersionEdit值，在Manifest中的一次增量内容称作一个Block，其内容如下：
 
@@ -50,7 +50,7 @@ Item := [kComparator] comparator
 
 可以看出恢复元信息的过程也变成了依次应用VersionEdit的过程，这个过程中有大量的中间Version产生，但这些并不是我们所需要的。LevelDB引入VersionSet::Builder来避免这种中间变量，方法是先将所有的VersoinEdit内容整理到VersionBuilder中，然后一次应用产生最终的Version，这种实现上的优化如下图所示：
 
-![VersionSet::Builder](http://i.imgur.com/wjxyapo.png)
+![VersionSet::Builder](http://catkang.github.io/assets/img/leveldb_version/version_builder.png)
 
 在这一节中，我们依次看到了LevelDB版本控制中比较重要的几个角色：Version、FileMetaData、VersionSet、VersionEdit、Manifest和Version::Builder。同时了解了他们各自的作用。接下来就一起从LevelDB主要的功能点中欣赏下他们的英姿。
 

@@ -38,7 +38,7 @@ Chubby所要实现的一致性是分布式系统中所能实现的最高级别�
 
 对比Chubby及Zookeeper的一致性保证可以看出，**Zookeeper损失的是不同客户端的读写操作的一致性**，如下图所示：
 
-![损失一致性](https://i.imgur.com/h0iQHPl.png)
+![损失一致性](http://catkang.github.io/assets/img/zookeeper_chubby/weak_consistency.png)
 
 Zookeeper集群的初始状态为x；Client A发起写操作将状态修改为y，写操作由于写操作线性的保证转发给Leader通过一致性协议复制到整个集群，过半数节点成功后返回成功；此时ClientB读还未同步到的Server，获得x。这种一致性的损失，换来的是集群读请求的高性能。对于不能容忍这种不一致的场景，Zookeeper提供两种机制满足：
 
@@ -56,7 +56,7 @@ Zookeeper集群的初始状态为x；Client A发起写操作将状态修改为y�
 - Chubby：提供准确语义的Lock，Release操作，内部完成了一致性协议，锁的实现的内容，仅将锁的使用部分留给用户；
 - Zookeeper：并没有提供加锁放锁操作，用户需要利用Zookeeper提供的基础操作，完成锁的实现和锁的使用部分的内容，如下图所示：
 
-![分布式锁](https://i.imgur.com/pANks8S.png)
+![分布式锁](http://catkang.github.io/assets/img/zookeeper_chubby/lock.png)
 
 因为如此，用户在使用Zookeeper来获得锁功能的时候会稍显复杂，以读写所为例，Chubby可以通过接口直接使用，而Zookeeper需要的操作如下：
 

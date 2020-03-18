@@ -8,7 +8,7 @@ keywords: 一致性, Consistency, Raft, Quorum
 
 熟悉Raft的读者知道，Raft在子问题Safty中，限制不能简单的通过收集大多数（Quorum）的方式提交之前term的entry。论文中也给出详细的例子说明违反这条限制可能会破坏算法的Machine Safety Property，即任何一个log位置只能有一个值被提交到状态机。如下图所示：
 
-![Imgur](https://i.imgur.com/xYMQibh.png)
+![Imgur](http://catkang.github.io/assets/img/raft_safty/raft.png)
 
 简单的说，c过程中如果S1简单的通过判断大多数节点在index为2的位置的AppendEntry成功来commit值2，那么后续S5成为Leader后，由于自己的值3拥有比2更大的term，导致用值3将已经commit的2覆盖。因此Raft限制只能通过判断大多数的方式提交当前term的entry，进而对之前的entry间接提交，如过程e所示。
 

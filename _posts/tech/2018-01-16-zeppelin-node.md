@@ -14,7 +14,7 @@ keywords: Zeppelin, KV存储，分布式存储储
 
 Node Server会与Client直接连接，接受用户请求，处理过程会经过如下层级：
 
-![Request Processing](https://i.imgur.com/ZhXXi33.png)
+![Request Processing](http://catkang.github.io/assets/img/zeppelin_node/request_processing.png)
 
 Client与存储节点Node之间用Protobuf协议通信，网络模块会先进行协议解析；之后进入命令的处理层，区分命令类型，判断合法性及读写属性；写请求会先写Rocksdb，之后写Binlog，Binlog被用来进行副本主从间的数据同步；Rocksdb是LSM（[The Log-Structured Merge-Tree](https://pdfs.semanticscholar.org/123f/c2af8203708f8bd2b6c3e3d6a41dd8f9a30e.pdf)）的优秀实现，数据会先被写入Rocksdb的内存Memtable及Log，并在之后的Compaction中逐步写入不同层级的SST文件中去。
 
@@ -24,7 +24,7 @@ Client与存储节点Node之间用Protobuf协议通信，网络模块会先进�
 
 Zeppelin的线程模型如下图所示：
 
-![Thread Model](https://i.imgur.com/9vbUPjd.png)
+![Thread Model](http://catkang.github.io/assets/img/zeppelin_node/thread_mode.png)
 
 通过不同的颜色我们将Zeppelin的线程分为四大块：
 
@@ -46,7 +46,7 @@ Zeppelin的线程模型如下图所示：
 
 Zeppelin的副本之间采用异步复制的方式，由Slave发起建立主从关系，当存储节点发现自己所负责的分片有主从关系变化时，会触发Slave向对应的Master发起TrySync请求，TrySync中携带Slave当前的Binlog偏移，Master从该偏移顺序发送Binlog信息。下图所示是主从之间配合数据同步的线程关系。
 
-![Sync](https://i.imgur.com/lNlLS2a.png)
+![Sync](http://catkang.github.io/assets/img/zeppelin_node/sync.png)
 
 #### **Binlog**
 
@@ -54,7 +54,7 @@ Binlog支持尾部的Append操作，由多个固定大小的文件组成，文�
 
 可以看出每个Record的解析，十分依赖从Header中读到的Length，那么当Binlog文件中有一小段损坏时，就会因为无法找到后一条而损失整个Binlog文件，为了降低这个损失，Binlog被划分为固定大小的**Block**，每个Block的开头都保证是一个Record开头，Binlog损坏时，只需要略过当前Block，继续后续的解析。
 
-![Binlog Format](https://i.imgur.com/ZqIvZAk.png)
+![Binlog Format](http://catkang.github.io/assets/img/zeppelin_node/binlog_format.png)
 
 
 
@@ -62,7 +62,7 @@ Binlog支持尾部的Append操作，由多个固定大小的文件组成，文�
 
 当主从关系建立以后，Master副本需要不断的给Slave副本发送Binlog信息。我们之前提到，一个分片都会对应一个Binlog，当有很多分片时，就没有办法给每个Binlog分配一个发送线程。因此Zeppelin采用了如下图所示机制：当前存储节点所负责的每个Master分片的Binlog发送任务被封装为一个Task，Task中记录其对应的Table，分片号，目标Slave节点地址，当前要发送的Binlog位置（文件号加文件内偏移）。所有的Task被排成一个FIFO队列，固定个数的Binglog发送线程从队列头中取出一个Task，服务固定的时间片长度后将其插回队列尾部。
 
-![Binlog Sender](https://i.imgur.com/tbxpUbA.png)
+![Binlog Sender](http://catkang.github.io/assets/img/zeppelin_node/binlog_sender.png)
 
 针对每个Task，Binlog发送线程会从当前的Binlog偏移量发送顺序发送Binlog Record的内容给对应的Slave的接受线程，并更新Binlog偏移。
 
@@ -106,7 +106,7 @@ Zeppelin利用LSM引擎所有文件写入后只会删除不会修改的特性，
 
 为了副本复制的高效，Binlog的发送采用单向传输，避免了等待Slave的确认信息，但这样就无法检测到主从之间链接的异常。Zeppelin复用了BInlog发送链路来进行异常检测，如下图所示，左边为Master节点，右边为Slave节点：
 
-![Imgur](https://i.imgur.com/Df4bO1A.png)
+![Sync Check](http://catkang.github.io/assets/img/zeppelin_node/sync_check.png)
 
 - Slave副本维护一个Master的超时时间和上一次通信时间，收到合法的Binlog请求或Lease命令会更新通信时间。否则，超时后触发TrySync Moudle发起新的主动同步请求。Master在收到新的TrySync请求后会用新的Binlog发送任务替换之前的，从而恢复Binlog同步过程。
 

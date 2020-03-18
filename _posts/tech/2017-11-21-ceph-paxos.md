@@ -21,7 +21,7 @@ Paxos节点与Monitor节点绑定，每个Monitor启动一个Paxos。当有大�
 
 除去上面提到的Leader及Peon外，Paxos节点还有可能处于Probing、Synchronizing、Election三种状态之一，如Figure 1所示。其中，Election用来选举新的Leader，Probing用来发现并更新集群节点信息，同时发现Paxos节点之间的数据差异，并在Synchronizing状态中进行数据的追齐。当Membership发生变化，发生消息超时或lease超时后节点会通过boostrap进入Probing状态，并向其他节点广播prob消息，所有收到prob消息的非prob或synchronizing节点会同样回到Probing状态。Probing状态收到过半数的对Members的认可后进入Election状态。同时Probing中发现数据差距过大的节点会进入synchronizing状态进行同步或部分同步。更多的内容会在稍后的Recovery，Membership及Log Compaction中介绍。
 
-![Figure](https://i.imgur.com/W2OwqOc.png)
+![State Machine](http://catkang.github.io/assets/img/ceph_paxos/state_machine.png)
 
 Leader会向所有Peon发送Lease消息，收到Lease的Peon在租约时间内可以直接以本地数据提供Paxos读服务，来分担Leader的只读请求压力。Lease过期的Peon会退回Probing状态，之后通过新一轮的选举产生新的Leader。
 
@@ -42,7 +42,7 @@ Leader会选择当前集群中最大且唯一的Propose Num，简称Pn，每次�
 - Peon收到commit消息同样在本地DB执行，完成commit；
 - Leader追加**lease**消息将整个集群带入到active状态。
 
-![Figure 2](https://i.imgur.com/58xHCrx.png)
+![Normal Case](http://catkang.github.io/assets/img/ceph_paxos/normal_case.png)
 
 
 
@@ -59,7 +59,7 @@ Peon的Lease超时或Leader任何消息超时都会将整个集群带回到Probi
 
 - 收到VICTORY消息的节点完成Election，进入Peon状态；
 
-![Figure 3](https://i.imgur.com/j6MDMXR.png)
+![Election](http://catkang.github.io/assets/img/ceph_paxos/election.png)
 
 
 
@@ -76,7 +76,7 @@ Peon的Lease超时或Leader任何消息超时都会将整个集群带回到Probi
 - Leader收到last消息，更新自己的commit数据，并将新的commit日志信息通过**commit**消息发送给所有需要更新的Peon；
 - 当接收到所有Peon accept的last消息后，如果发现集群有uncommitted数据，则先对该提案重新进行提交，否则向Peon发送**lease**消息刷新其Lease；
 
-![Figure 4](https://i.imgur.com/5irlFkB.png)
+![Recovery](http://catkang.github.io/assets/img/ceph_paxos/recovery.png)
 
 可以看出，当Leader和Peon之间的距离差距较大时，拉取并重放Log的时间会很长，因此在开始选主之前，Ceph Monitor首先通过如Figure 1所示的Synchronizing来将所有参与Paxos节点的日志信息差距缩小到足够小的区间，这个长度由paxos_max_join_drift进行配置，默认为10。Synchronizing过程中Monitor节点会根据Prob过程中发现的commit位置之间的差异进行数据的请求和接收。
 
@@ -120,7 +120,7 @@ Leader和Peon之间的Lease消息同时承担了存活检测的任务，这个�
 
 ## **代码概述**
 
-![Figure 5](https://i.imgur.com/BTHS5oQ.png)
+![Code](http://catkang.github.io/assets/img/ceph_paxos/code.png)
 
 Ceph Monitor中Paxos相关的内容散布在不同的类型中，主要包括Monitor，Election，Paxos几个类：
 

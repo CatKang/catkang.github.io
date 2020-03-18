@@ -21,7 +21,7 @@ Memtable对应Leveldb中的内存数据，LevelDB的写入操作会直接将数�
 
 LevelDB采用跳表SkipList实现，在给提供了O(logn)的时间复杂度的同时，又非常的易于实现：
 
-![跳表](http://i.imgur.com/bmOK4Ui.png)
+![跳表](http://catkang.github.io/assets/img/leveldb_data/skip_table.png)
 
 SkipList中单条数据存放一条Key-Value数据，定义为：
 
@@ -46,7 +46,7 @@ KeyString := UserKeyLength + UserKey
 
 LevelDB首先将每条写入数据序列化为一个Record，单个Log文件中包含多个Record。同时，Log文件又划分为固定大小的Block单位，并保证Block的开始位置一定是一个新的Record。这种安排使得发生数据错误时，最多只需丢弃一个Block大小的内容。显而易见地，不同的Record可能共存于一个Block，同时，一个Record也可能横跨几个Block。
 
-![Log format](http://i.imgur.com/ZqIvZAk.png)
+![Log format](http://catkang.github.io/assets/img/leveldb_data/log_format.png)
 
 ```
 Block := Record * N
@@ -74,7 +74,7 @@ SST文件是Leveldb中数据的最终存储角色，划分为不同的Level，Le
 
 LevelDB将SST文件定义为Table，每个Table又划分为多个连续的Block，每个Block中又存储多条数据Entry：
 
-![SST物理格式](http://i.imgur.com/mXoNhdx.png)
+![SST物理格式](http://catkang.github.io/assets/img/leveldb_data/sst1.png)
 
 
 
@@ -86,7 +86,7 @@ LevelDB将SST文件定义为Table，每个Table又划分为多个连续的Block�
 
 Table中不同的Block物理上的存储方式一致，如上文所示，但在逻辑上可能存储不同的内容，包括存储数据的Block，存储索引信息的Block，存储Filter的Block：
 
-![SST逻辑格式](http://i.imgur.com/1nTxs5r.png)
+![SST逻辑格式](http://catkang.github.io/assets/img/leveldb_data/sst2.png)
 
 - **Footer：**为于Table尾部，记录指向Metaindex Block的Handle和指向Index Block的Handle。需要说明的是Table中所有的Handle是通过偏移量Offset以及Size一同来表示的，用来指明所指向的Block位置。Footer是SST文件解析开始的地方，通过Footer中记录的这两个关键元信息Block的位置，可以方便的开启之后的解析工作。另外Footer种还记录了用于验证文件是否为合法SST文件的常数值Magicnum。
 

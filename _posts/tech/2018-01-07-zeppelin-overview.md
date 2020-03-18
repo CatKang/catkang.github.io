@@ -46,7 +46,7 @@ Zeppelin的整个设计和实现都围绕这三个目标努力。这里将从API
 
 最为一个分布式存储，首要需要解决的就是数据分布的问题。另一篇博客[浅谈分布式存储系统数据分布方法](http://catkang.github.io/2017/12/17/data-placement.html)中介绍了可能的数据分布方案，Zeppelin选择了比较灵活的分片的方式，如下图所示：
 
-![Partition](https://i.imgur.com/ZYGmw35.png)
+![Partition](http://catkang.github.io/assets/img/zeppelin_overview/partition.png)
 
 用逻辑概念Table区分业务，并将Table的整个Key Space划分为相同大小的分片（Partition），每个分片的多副本分别存储在不同的存储节点（Node Server）上，因而，每个Node Server都会承载多个Partition的不同副本。Partition个数在Table创建时确定，更多的Partition数会带来更好的数据均衡效果，提供扩展到更大集群的可能，但也会带来元信息膨胀的压力。实现上，Partition又是数据备份、数据迁移、数据同步的最小单位，因此更多的Partition可能带来更多的资源压力。Zeppelin的设计实现上也会尽量降低这种影响。
 
@@ -62,7 +62,7 @@ Zeppelin的整个设计和实现都围绕这三个目标努力。这里将从API
 
 Zeppelin根据这些信息及当前的数据分布直接计算出完整的目标数据分布，这个过程会尽量保证数据均衡及需要的副本故障域。下图举例展示了，副本在机架（cabinet）级别隔离的规则及分布方式。更详细的介绍见[Decentralized Placement of Replicated Data](https://whoiami.github.io/DPRD)
 
-![Partition Placement](https://i.imgur.com/WPH4VBj.png)
+![Partition Placement](http://catkang.github.io/assets/img/zeppelin_overview/placement.png)
 
 
 
@@ -75,7 +75,7 @@ Zeppelin根据这些信息及当前的数据分布直接计算出完整的目标
 
 考虑到对大集群目标的需求，Zeppelin采用了有中心节点的元信息管理方式。其整体结构如下图所示：
 
-![Architecture](https://i.imgur.com/ww0Zjaj.png)
+![Architecture](http://catkang.github.io/assets/img/zeppelin_overview/architecture.png)
 
 可以看出Zeppelin有三个主要的角色，元信息节点Meta Server、存储节点Node Server及Client。Meta负责元信息的维护、Node的存活检测及元信息分发；Node负责实际的数据存储；Client的首次访问需要先从Meta获得当前集群的完整数据分布信息，对每个用户请求计算正确的Node位置，并发起直接请求。
 
@@ -106,7 +106,7 @@ Zeppelin中采用了我们的一致性库[Floyd](https://github.com/Qihoo360/flo
 
 为了容错，通常采用数据三副本的方式，又由于对高性能的定位，我们选择了Master，Slave的副本策略。每个Partition包含至少三个副本，其中一个为Master，其余为Slave。所有的用户请求由Master副本负责，读写分离的场景允许Slave也提供读服务。Master处理的写请求会在修改DB后写Binlog，并异步的将Binlog同步给Slave。
 
-![Imgur](https://i.imgur.com/Df4bO1A.png)
+![Imgur](http://catkang.github.io/assets/img/zeppelin_overview/sync_check.png)
 
 上图所示的是Master，Slave之间建立主从关系的过程，右边为Slave。当元信息变化时，Node从Meta拉取最新的元信息，发现自己是某个Partition新的Slave时，将TrySync任务通过Buffer交给TrySync Moudle；TrySync Moudle向Master的Command Module发起Trysync；Master生成Binlog Send任务到Send Task Pool；Binlog Send Module向Slave发送Binlog，完成数据异步复制。更详细内容见：[Zeppelin不是飞艇之存储节点](http://catkang.github.io/2018/01/07/zeppelin-overview.html)。未来也考虑支持Quorum及EC的副本方式来满足不同的使用场景。
 

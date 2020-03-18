@@ -12,7 +12,7 @@ keywords: Zeppelin, KV存储，分布式存储
 
 ## **角色**
 
-![Architecture](https://i.imgur.com/ww0Zjaj.png)
+![Architecture](http://catkang.github.io/assets/img/zeppelin_meta/architecture.png)
 
 从上图可以看出Meta集群的中心地位：
 
@@ -28,7 +28,7 @@ keywords: Zeppelin, KV存储，分布式存储
 
 ## **线程模型**
 
-![Thread Model](https://i.imgur.com/EJpLDIx.png)
+![Thread Model](http://catkang.github.io/assets/img/zeppelin_meta/thread_mode.png)
 
 相对于存储节点，元信息节点的线程模型比较简单：
 
@@ -47,7 +47,7 @@ keywords: Zeppelin, KV存储，分布式存储
 
 为了完成上述任务，Meta节点需要维护一套完整的数据，包括Node节点心跳信息、Node节点Offset信息、分片信息、Meta成员信息、扩容迁移信息等。由于一致性算法本身限制，我们需要尽量降低对Floyd的访问压力，因此并不是所有这些数据都需要直接维护在Floyd中。Zeppelin根据数据的重要程度、访问频率及是否可恢复进行划分，仅仅将低频访问且不易恢复的数据记录在Floyd中。
 
-![Data Structure](https://i.imgur.com/DixFvMj.png)
+![Data Structure](http://catkang.github.io/assets/img/zeppelin_meta/data_structure.png)
 
 上图所示是Meta节点所维护数据的数据结构及存储方式，可以看出，除了一致性库Floyd中记录的数据外，Meta还会在内存中维护对应的数据结构，内存数据结构依赖Floyd中的数据，重新组织并提供更方便访问的接口。从所完成的任务来看，主要包括三个部分：
 
@@ -98,7 +98,7 @@ Meta集群中的节点分为Leader和Follower两种角色：
 
 - 简单实现：节点在尝试加锁时需要提供一个时间，锁服务保证这个时间内不将锁给其他节点。使用者需要自己保证所有的操作能在这个时间内完成。这个方法虽然不严谨但是非常简单易用，Zeppelin的Meta集群采用的正是这种方式。
 
-![Election](https://i.imgur.com/2Exzegu.png)
+![Election](http://catkang.github.io/assets/img/zeppelin_meta/election.png)
 
 如上图右边部分显示了这三部分在Meta中的对应关系：
 
@@ -109,8 +109,7 @@ Meta集群中的节点分为Leader和Follower两种角色：
 这里需要说明的是，相对于Fine-Lock而言，Coarse-Lock加锁的时间更长，响应的锁的迁移也会带来更大的成本。比如主从链接的重新建立，任务队列的丢弃及清空，Meta工作线程的切换等。因此我们希望下层Lock抖动尽量不要影响上层的主从关系，针对这点Meta中设计了如下两种机制：
 
 - Meta主从关系与Floyd主从关系解耦，即使Floyd主从变化，依然有可能对上层Meta集群透明；
-- 引入**Jeopardy**阶段，正常运行过程中，Meta会记录当前的Leader信息，当Floyd由于网络或节点异常无法服务时，Meta层会进入Jeopardy阶段中，Jeopardy使得Meta节点在一定的时间内依然保持主从关系不变。这个时间就是上面提到的为了读优化给Leader的Lease。之所以能够这么做，正是由于Zeppline的设计中尽量减少对Meta集群作为中心节点的依赖，从而可以接受Meta集群短时间的不可用。
-
+- 引入**Jeopardy**阶段，正常运行过程中，Meta会记录当前的Leader信息，当Floyd由于网络或节点异常无法服务时，Meta层会进入Jeopardy阶段中，Jeopardy使得Meta节点在一定的时间内依然保持主从关系不变。这个时间就是上面提到的为了读优化给Leader的Lease。之所以能够这么做，正是由于Zeppline的设计中尽量减少对Meta集群作为中心节点的依zeppelin_meta/
 
 
 
@@ -119,7 +118,7 @@ Meta集群中的节点分为Leader和Follower两种角色：
 
 Zeppelin作为存储集群，考虑到资源利用及业务变化，不可避免的需要进行集群的扩容、缩容或平衡操作。下图是简单的扩容操作示例，三个存储节点Node1，Node2，Node3，负责分片P1，P2，P3的九个主从副本。这时Node4加入，需要将P1的Master副本和P3的Slave副本迁移过去。
 
-![Imgur](https://i.imgur.com/YKGpr5g.png)
+![Cluster](http://catkang.github.io/assets/img/zeppelin_meta/cluster.png)
 
 针对这类问题，主要有如下诉求：
 
@@ -150,7 +149,7 @@ Zeppelin作为存储集群，考虑到资源利用及业务变化，不可避免
 
 
 
-![Imgur](https://i.imgur.com/tBLxSs0.png)
+![Migration](http://catkang.github.io/assets/img/zeppelin_meta/migration.png)
 
 上图所示是Zeppelin的扩容、缩容及平衡机制：
 

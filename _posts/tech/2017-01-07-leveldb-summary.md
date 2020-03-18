@@ -12,7 +12,7 @@ LevelDB是Google传奇工程师Jeff Dean和Sanjay Ghemawat开源的KV存储引�
 
 LevelDB的数据是存储在磁盘上的，采用LSM-Tree的结构实现。LSM-Tree将磁盘的随机写转化为顺序写，从而大大提高了写速度。为了做到这一点LSM-Tree的思路是将索引树结构拆成一大一小两颗树，较小的一个常驻内存，较大的一个持久化到磁盘，他们共同维护一个有序的key空间。写入操作会首先操作内存中的树，随着内存中树的不断变大，会触发与磁盘中树的归并操作，而归并操作本身仅有顺序写。如下图所示：
 
-![LSM示意](http://i.imgur.com/5mZcEt8.png)
+![LSM示意](http://catkang.github.io/assets/img/leveldb_summary/summary.png)
 
 
 
@@ -35,7 +35,7 @@ LevelDB的数据是存储在磁盘上的，采用LSM-Tree的结构实现。LSM-T
 - **Current文件:** 从上面的介绍可以看出，LevelDB启动时的首要任务就是找到当前的Manifest，而Manifest可能有多个。Current文件简单的记录了当前Manifest的文件名，从而让这个过程变得非常简单。
 
 
-![LevelDB 结构](http://i.imgur.com/wGc3c2J.png)
+![LevelDB 结构](http://catkang.github.io/assets/img/leveldb_summary/structure.png)
 
 
 
