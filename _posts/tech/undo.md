@@ -44,7 +44,7 @@ InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版
 
 这种Undo Record在代码中对应的是TRX_UNDO_INSERT_REC类型。不同于Update类型的Undo Record，Insert Undo Record仅仅是为可能的事务回滚准备的，并不在MVCC功能中承担作用。因此只需要记录对应Record的Key，供回滚时查找Record位置即可。
 
-![insert_undo_record](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/insert_undo_record-5261142.png)
+![insert_undo_record](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/insert_undo_record-5327118.png)
 
 其中Undo Number是Undo的一个递增编号，Table ID用来表示是哪张表的修改。下面一组Key Fields的长度不定，因为对应表的主键可能由多个field组成，这里需要记录Record完整的主键信息，回滚的时候可以通过这个信息在索引中定位到对应的Record。除此之外，在Undo Record的头尾还各留了两个字节用户记录其前序和后继Undo Record的位置。
 
@@ -54,66 +54,48 @@ InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版
 
 由于MVCC需要保留Record的多个历史版本，当某个Record的历史版本还在被使用时，这个Record是不能被真正的删除的。因此，当需要删除时，其实只是修改对应Record的Delete Mark标记。对应的，如果这时这个Record又重新插入，其实也只是修改一下Delete Mark标记，也就是将这两种情况的delete和insert转变成了update操作。再加上常规的Record修改，因此这里的Update Undo Record会对应三种Type：TRX_UNDO_UPD_EXIST_REC、TRX_UNDO_DEL_MARK_REC和TRX_UNDO_UPD_DEL_REC。他们的存储内容也类似：
 
-TODO 图
+![update_undo_record](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/update_undo_record.png)
 
-![image-20211020004615521](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020004615521.png)
+除了跟Insert Undo Record相同的头尾信息，以及主键Key Fileds之外，Update Undo Record增加了：
 
-Undo Number、Table ID以及Key Fields跟上面的Insert类型Undo Record类似， 不同的是Update类型的Undo Record下面还有一组Updated Fields，这个记录的是当前这个历史版本相对于最新版本的不同之处，也就是本次修改所有变化的Field都需要在这里记录其变化信息。
-
-
-
-其中所有的Undo Record都会包含两项：**trx_id**用来标明创建当前Undo Record的事务id；**Rollptr**指向当前Record再往前的一个版本，通过Rollptr可以顺藤摸瓜找到某个Record的所有历史版本。
-
-![image-20211021105008711](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211021105008711.png)
-
-TODO：
-
-- 三种type存储内容上确定有没有区别
-- Updated Field是相对于更老的一个版本的还是更新的一个版本的
-
-
-
-
+- Transaction Id记录了产生这个历史版本事务Id，用作后续MVCC中的版本可见性判断
+- Rollptr指向的是该记录的上一个版本的位置，包括space number，page number和page内的offset。沿着Rollptr可以找到一个Record的所有历史版本。
+- Update Fields中记录的就是当前这个Record版本相对于其之后的一次修改的Delta信息，包括所有被修改的Field的编号，长度和历史值。
 
 
 
 # Undo Record的组织方式
 
+上面介绍了一个Undo Record中的存放的内容，每一次的修改都会产生至少一个Undo Record，那么大量Undo Record如何组织起来，来支持高效的访问和管理呢，这一小节我们将从几个层面来进行介绍：首先是在不考虑物理存储的情况下的**逻辑组织方式**； 之后，**物理组织方式**介绍如何将其存储到到实际16KB物理块中；然后**文件组织方式**介绍整体的文件结构；最后再介绍其在**内存中的组织方式**。
+
+
+
 ### 逻辑组织方式 - Undo Log
 
+每个事务其实会修改一组的Record，对应的也就会产生一组Undo Record，这些Undo Record收尾相连就组成了这个事务的**Undo Log**。除了一个个的Undo Record之外，还在开头增加了一个Undo Log Header来记录一些必要的控制信息，因此，一个Undo Log的结构如下所示：
+![undo_log](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_log.png)
 
+**Undo Log Header**中记录了产生这个Undo Log的事务的Trx ID；Trx No是事务的提交顺序，也会用这个来判断是否能Purge，这个在后面会详细介绍；Delete Mark标明该Undo Log中有没有TRX_UNDO_DEL_MARK_REC类型的Undo Record，避免Purge时不必要的扫描；Log Start Offset中记录Undo Log Header的结束位置，方便之后Header中增加内容时的兼容；之后是一些Flag信息；Next Undo Log及Prev Undo Log标记前后两个Undo Log，这个会在接下来介绍；最后通过History List Node将自己挂载到为Purge准备的History List中。
 
-![image-20211020162935560](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020162935560.png)
+ 索引中的同一个Record被不同事务修改，会产生不同的历史版本，这些历史版本又通过**Rollptr**穿成一个链表，供MVCC使用。如下图所示：
 
-![image-20211020163925748](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020163925748.png)
+![undo_logicial](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_logical.png)
 
-上面介绍了一个**Undo Record**中的存放的内容，而每个事务其实会修改一组的Record，对应的也就会产生一组Undo Record，这些Undo Record收尾相连就组成了这个事务的**Undo Log**。由于之后会讲到Purge和事务回滚会从两个不同的方向遍历Undo Record，为了能快速的定位到下一条Undo Record，InnoDB在每条Undo Record的前后各加了两个自己分别指向Next Undo Record和Previous Undo Record。
-
-除此之外，还需要为每个Undo Log添加一些元信息，如下图所示，
-
-
-
-![image-20211020102503922](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020102503922.png)
-
-如上图所示是一条完整的事务的Undo Log，除了连续的Undo Records外，还在头部记录了一组元信息，包括该事务的ID，事务提交编号Trx No，Undo Log中是否包含Delete Mark的Undo Record，Undo Log的开始位置，以及一些Flag等信息。Next Undo Log和Prev Undo Log记录同一个Undo Segment中前序和后继Undo Log的位置。事务提交后会将自己的History List Node挂到Rollback Segment的History List，等到后台的Purge。
+示例中有三个事务操作了表t上，主键id是1的记录，首先事务I插入了这条记录并且设置filed a的值是A，之后事务J和事务K分别将这条id为1的记录中的filed a的值修改为了B和C。I，J，K三个事务分别有自己的逻辑上连续的三条Undo Log，每条Undo Log有自己的Undo Log Header。从索引中的这条Record沿着Rollptr可以依次找到这三个事务Undo Log中关于这条记录的历史版本。同时可以看出，Insert类型Undo Record中只记录了对应的主键值：id=1，而Update类型的Undo Record中还记录了对应的历史版本的生成事务Trx_id，以及被修改的field a的历史值。
 
 
 
 ### 物理组织格式 - Undo Segment
 
-上面描述了一个Undo Log的结构，一个事务会产生多大的Undo Log本身是不可控的，而最终写入磁盘却是按照固定的块大小为单位的，InnoDB中默认是16KB，那么如何用固定的块大小承载不定长的Undo Log，以实现高效的空间分配、复用，避免空间浪费。下面我们就看看这部分的物理存储方式：
+上面描述了一个Undo Log的结构，一个事务会产生多大的Undo Log本身是不可控的，而最终写入磁盘却是按照固定的块大小为单位的，InnoDB中默认是16KB，那么如何用固定的块大小承载不定长的Undo Log，以实现高效的空间分配、复用，避免空间浪费。InnoDB的**基本思路**是让多个较小的Undo Log紧凑存在一个Undo Page中，而对较大的Undo Log则随着不断的写入，按需分配足够多的Undo Page分散承载。下面我们就看看这部分的物理存储方式：
 
-![image-20211020144533097](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020144533097.png)
+![undo_physical](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_physical.png)
 
-如上所示，是一个**Undo Segment**的示意图，每个写事务开始写操作之前都需要持有一个Undo Segment，一个Undo Segment中的所有磁盘空间的分配和释放，也就是16KB Page的申请和释放，都是由一个FSP的Segment管理的，这个跟索引中的Leaf Node Segment和Non-Leaf Node Segment的管理方式是一致的，这部分之后会有单独的博客来进行介绍。
+如上所示，是一个**Undo Segment**的示意图，每个写事务开始写操作之前都需要持有一个Undo Segment，一个Undo Segment中的所有磁盘空间的分配和释放，也就是16KB Page的申请和释放，都是由一个FSP的Segment管理的，这个跟索引中的Leaf Node Segment和Non-Leaf Node Segment的管理方式是一致的，这部分之后会有单独的文章来进行介绍。
 
-Undo Segment会持有至少一个**Undo Page**，每个Undo Page会在开头38字节到56字节记录**Undo Log Header**，其中记录Undo Page的类型、最后一条Undo Record的位置，当前Page还空闲部分的开头。Undo Segment中的第一个Undo Page还会在56字节到86字节记录**Undo Segment Header**，这个就是这个Undo Segment中磁盘空间管理的Handle，其中齐鲁的是这个Undo Segment的状态，最后一条Undo Record的位置，这个FSP Segment的Header，以及当前分配出来的所有Undo Page的链表。
+Undo Segment会持有至少一个**Undo Page**，每个Undo Page会在开头38字节到56字节记录**Undo Page Header**，其中记录Undo Page的类型、最后一条Undo Record的位置，当前Page还空闲部分的开头，也就是下一条Undo Record要写入的位置。Undo Segment中的第一个Undo Page还会在56字节到86字节记录**Undo Segment Header**，这个就是这个Undo Segment中磁盘空间管理的Handle；其中记录的是这个Undo Segment的状态，比如TRX_UNDO_CACHED、TRX_UNDO_TO_PURGE等；这个Undo Segment中最后一条Undo Record的位置；这个FSP Segment的Header，以及当前分配出来的所有Undo Page的链表。
 
 Undo Page剩余的空间都是用来存放Undo Log的，对于像上图Undo Log 1，Undo Log 2这种较短的Undo Log，为了避免Page内的空间浪费，InnoDB会复用Undo Page来存放多个Undo Log，而对于像Undo Log 3这种比较长的Undo Log可能会分配多个Undo Page来存放。需要注意的是Undo Page的复用只会发生在第一个Page。
-
-
-
-
 
 
 
