@@ -101,28 +101,45 @@ Undo Page剩余的空间都是用来存放Undo Log的，对于像上图Undo Log 
 
 ### 文件组织方式 - Undo Tablespace
 
-每一时刻一个Undo Segment都是被一个事务独占的。当有大量事务并发运行时，就需要存在多个Undo Segment。InnoDB中，会将这些Undo Segment按照1024一组划分为**Rollback Segment**。每个Undo Tablespace会包含128个Rollback Segment，每个Rollback Segment本身会占用一个Page，其中记录**Rollback Segment Header**，其中包含1024个Slot，每个Slot占四个字节，指向一个Undo Segment的First Page，以及该Rollback Segment中已提交事务的History List，后续的Purge过程会顺序从这里开始回收工作。
+每一时刻一个Undo Segment都是被一个事务独占的。每个写事务都会持有至少一个Undo Segment，当有大量写事务并发运行时，就需要存在多个Undo Segment。InnoDB中的Undo 文件中准备了大量的Undo Segment的槽位，按照1024一组划分为**Rollback Segment**。每个Undo Tablespace最多会包含128个Rollback Segment，Undo Tablespace文件中的第三个Page会固定作为这128个Rollback Segment的目录，也就是**Rollback Segment Arrary Header**，其中最多会有128个指针指向各个Rollback Segment Header所在的Page。**Rollback Segment Header**是按需分配的，其中包含1024个Slot，每个Slot占四个字节，指向一个**Undo Segment**的First Page。除此之前还会记录该Rollback Segment中已提交事务的History List，后续的Purge过程会顺序从这里开始回收工作。
 
-可以看出Rollback Segment的个数会直接影响InnoDB支持的最大事务并发数。MySQL 8.0由于支持了最多128个独立的Undo Tablespace，一方面避免了ibdata1的膨胀，方便undo空间回收，另一方面也大大增加了最大的Rollback Segment的个数。如下图所示：
-
-![image-20211020160100612](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020160100612.png)
+可以看出Rollback Segment的个数会直接影响InnoDB支持的最大事务并发数。MySQL 8.0由于支持了最多127个独立的Undo Tablespace，一方面避免了ibdata1的膨胀，方便undo空间回收，另一方面也大大增加了最大的Rollback Segment的个数，增加了可支持的最大并发写事务数。如下图所示：
 
 
 
-TODO
-
-- 每个事务持有几个Undo Segment
-- 80最多有多少个undo tablespace
+![undo_physical](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_tablespace.png)
 
 
 
 ### 内存组织结构
 
-trx_rseg_t对应Rollback Segment，其中除了对应的一些元信息，供Purge使用的下一条Purge位置和四个trx_undo_t的链表，分别对应
+上面介绍的都是Undo数据在磁盘上的组织结构，除此之外，在内存中也会维护对应的数据结构来管理Undo Log，如下图所示：
 
-trx_undo_t对应Undo Segment
+![undo_memory](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_memory.png)
 
-![image-20211020164029152](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211020164029152.png)
+对应每个磁盘Undo Tablespace会有一个**undo::Tablespace**的内存结构，其中最主要的就是一组trx_rseg_t的集合，**trx_rseg_t**对应的就是上面介绍过的一个Rollback Segment Header，除了一些基本的元信息之外，trx_rseg_t中维护了四个trx_undo_t的链表，**Update List**中是正在被使用的用于写入Update类型Undo的Undo Segment；**Update Cache List**中是空闲空间比较多，可以被后续事务复用的Update类型Undo Segment;对应的，**Insert List**和**Insert Cache List**分别是正在使用中的Insert类型Undo Segment，和空间空间较多，可以被后续复用的Insert类型Undo Segment。因此**trx_undo_t**对应的就是上面介绍过的Undo Segment，如下所示，可以看出其中的信息跟Undo Segment中的文件结构是对应的。
+
+``` c++
+struct trx_undo_t {
+	ulint id;
+	ulint type; // TRX_UNDO_INSERT or TRX_UNDO_UPDATE
+	ulint state;
+	ibool del_marks;
+	trx_id_t trx_id; // 持有的事务id
+	...
+	trx_rseg_t *rseg; // 属于的rollback segment
+	...
+	page_no_t hdr_page_no;
+	ulint hdr_offset;  // undo log header 所在的page_no和page内偏移
+	page_no_t last_page_no; // undo log中的最后一个page
+	ulint size; // 有多少个page
+	...
+
+	UT_LIST_NODE_T(trx_undo_t) undo_list;  // trx_rseg_t上的链表项
+}
+```
+
+接下来，我们就从Undo的写入、Undo用于Rollback、用户MVCC、用户Crash Recovery以及如何清理Undo等方面来介绍InnoDB中Undo的角色和功能。
 
 
 
@@ -130,23 +147,23 @@ trx_undo_t对应Undo Segment
 
 # Undo的写入
 
-当写事务开始时，会先通过**trx_assign_rseg_durable**分配一个Rollback Segment，这里的分配策略也很简单，就是依次尝试下一个Active的Rollback Segment。之后当第一次真正产生修改需要写Undo Record的时，会调用**trx_undo_assign_undo**来获得一个Undo Segment。这里会优先使用cached trx_undo_t来进行复用，也就是已经分配出来但没有正在使用的Undo Segment，如果没有才调用**trx_undo_create**来选择当期Rollback Segment中可用的Slot，Slot中如果是FIL_NUL，则代表该slot还没有被占用，轮询获得一个这样的slot，并创建新的Undo Segment和Undo Page，初始化Header等元信息。
+当写事务开始时，会先通过**trx_assign_rseg_durable**分配一个Rollback Segment，该事务的内存结构trx_t也会通过rsegs指针指向对应的trx_rseg_t内存结构，这里的分配策略很简单，就是依次尝试下一个Active的Rollback Segment。之后当第一次真正产生修改需要写Undo Record的时，会调用**trx_undo_assign_undo**来获得一个Undo Segment。这里会优先复用trx_rseg_t上Cached List中的trx_undo_t，也就是已经分配出来但没有被正在使用的Undo Segment，如果没有才调用**trx_undo_create**创建新的Undo Segment，trx_undo_create中会轮询选择当前Rollback Segment中可用的Slot，也是就值FIL_NUL的Slot，申请新的Undo Page，初始化Undo Page Header，Undo Segment Header等信息，创建新的trx_undo_t内存结构并挂到trx_rseg_t的对应List中。
 
 获得了可用的Undo Segment之后，该事务会在合适的位置初始化自己的Undo Log Header，之后，其所有修改产生的Undo Record都会顺序的通过**trx_undo_report_row_operation**顺序的写入当前的Undo Log，其中会根据是insert还是update类型，分别调用**trx_undo_page_report_insert**或者**trx_undo_page_report_modify**。本文开始已经介绍过了具体的Undo Record内容。简单的讲，insert类型会记录插入Record的主键，update类型除了记录主键以外还会有一个update fileds记录这个历史值跟索引值的diff。之后指向当前Undo Record位置的Rollptr会返回写入索引的Record上。
 
 当一个Page写满后，会调用**trx_undo_add_page**来在当前的Undo Segment上添加新的Page，新Page写入Undo Page Header之后继续供事务写入Undo Record，为了方便维护，这里有一个限制就是单条Undo Record不跨page，如果当前Page放不下，会将整个Undo Record写入下一个Page。
 
-当事务结束（commit或者rollback）之后，如果只占用了一个Undo Page，且当前Undo Page使用空间小于page的3/4，这个Undo Segment会保留并加入到对应的insert/update cached list中。否则，insert类型的Undo Segment会直接回收，而update类型的Undo Segment会等待后台的Purge做完后回收。根据不同的情况，Undo Segment Header中的State会被从TRX_UNDO_ACTIVE改成TRX_UNDO_TO_FREE，TRX_UNDO_TO_PURGE或TRX_UNDO_CACHED，这个修改其实就是**InnoDB的事务结束的标志**，无论是Rollback还是Commit。
+当事务结束（commit或者rollback）之后，如果只占用了一个Undo Page，且当前Undo Page使用空间小于page的3/4，这个Undo Segment会保留并加入到对应的insert/update cached list中。否则，insert类型的Undo Segment会直接回收，而update类型的Undo Segment会等待后台的Purge做完后回收。根据不同的情况，Undo Segment Header中的State会被从TRX_UNDO_ACTIVE改成TRX_UNDO_TO_FREE，TRX_UNDO_TO_PURGE或TRX_UNDO_CACHED，这个修改其实就是**InnoDB的事务结束的标志**，无论是Rollback还是Commit，在这个修改对应的Redo落盘之后，就可以返回用户结果，并且Crash Recovery之后也不会再做回滚处理。
 
 
 
 # Undo for Rollback
 
-InnoDB中的事务可能会由用户主动触发Rollback，也可能因为遇到死锁等异常Rollback，或者发生Crash，重启后对未提交的事务回滚。在Undo层面来看，这些回滚的操作是一致的，基本的过程就是从该事务的Undo Log中，从后向前依次读取Undo Record，并根据其中内容做逆向操作，恢复索引记录。
+InnoDB中的事务可能会由用户主动触发Rollback；也可能因为遇到死锁异常Rollback；或者发生Crash，重启后对未提交的事务回滚。在Undo层面来看，这些回滚的操作是一致的，基本的过程就是从该事务的Undo Log中，从后向前依次读取Undo Record，并根据其中内容做逆向操作，恢复索引记录。
 
 回滚的入口是函数**row_undo**，其中会先调用**trx_roll_pop_top_rec_of_trx**获取并删除该事务的最后一条Undo Record，回忆上面介绍的Undo Segment的结构，从Undo Segment Header中记录的Page List可以找到当前事务的最后一个Undo Page的Header，并根据Header上记录的Lastest Log Record Offset便可以方便的定位最后一条Undo Record。之后根据Undo Record上面的前序指针找到前一个Undo Record，依次进行处理。如下图：
 
-TODO 图
+![undo_memory](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_rollback.png)
 
 拿到Undo Record之后，自然地，就是对其中内容的解析，这里会调用**row_undo_ins_parse_undo_rec**，从Undo Record中获取修改行的table，解析出其中记录的主键信息，如果是update类型，还会拿到一个update vector记录其相对于更新的一个版本的变化。
 
@@ -154,7 +171,7 @@ TODO 图
 
 update类型的undo包括TRX_UNDO_UPD_EXIST_REC，TRX_UNDO_DEL_MARK_REC和TRX_UNDO_UPD_DEL_REC三种情况，他们的Undo回滚都是在**row_undo_mod**中进行，首先会调用**row_undo_mod_del_unmark_sec_and_undo_update**，其中根据从Undo Record中解析出的update vector来回退这次操作在所有二级索引上的影响，可能包括重新插入被删除的二级索引记录、去除其中的Delete Mark标记，或者用update vector中的diff信息将二级索引记录修改之前的值。之后调用**row_undo_mod_clust**同样利用update vector中记录的diff信息将主索引记录修改回之前的值。
 
-完成回滚的Undo Log部分，会调用**trx_roll_try_truncate**进行回收，对不再使用的page调用**trx_undo_free_last_page**将磁盘空间交还给Undo Segment，这个写入过程中**trx_undo_add_page**的逆操作。
+完成回滚的Undo Log部分，会调用**trx_roll_try_truncate**进行回收，对不再使用的page调用**trx_undo_free_last_page**将磁盘空间交还给Undo Segment，这个是写入过程中**trx_undo_add_page**的逆操作。
 
 
 
