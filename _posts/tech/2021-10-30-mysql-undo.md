@@ -1,14 +1,21 @@
-# 庖丁解InnoDB之Undo Log
+---
+layout: post
+title: 庖丁解InnoDB之Undo LOG
+category: 技术
+tags: [Database, MySQL, InnoDB, UNDO]
+keywords: MySQL，InnoDB，UNDO，undo, undo log
 
+---
 
-
-Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个最主要的部分，并发控制（Concurrency  Control）和故障恢复（Crash Recovery），InnoDB中Undo Log的实现上亦日志亦数据。本文将从其作用、设计思路、记录内容、组织结构，以及各种功能实现等方面，整体介绍InnoDB中的Undo Log，文章会深入一定的代码实现，但在细节上还是希望用抽象的实现思路代替具体的代码。本文基于MySQL 8.0，但在大多数的设计思路上MySQL的各个版本都是一致的。
+Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个最主要的部分，并发控制（Concurrency  Control）和故障恢复（Crash Recovery），InnoDB中Undo Log的实现上亦日志亦数据。本文将从其作用、设计思路、记录内容、组织结构，以及各种功能实现等方面，整体介绍InnoDB中的Undo Log，文章会深入一定的代码实现，但在细节上还是希望用抽象的实现思路代替具体的代码。本文基于MySQL 8.0，但在大多数的设计思路上MySQL的各个版本都是一致的。考虑到篇幅有限，以及避免过多信息的干扰，从而能够聚焦Undo Log本身的内容，本文中一笔带过或有意省略了一些内容，包括索引、事务系统、XA事务、Virtual Column、外部记录、Blob等。
 
 
 
 # Undo Log的作用
 
 [数据库故障恢复机制的前世今生](http://catkang.github.io/2019/01/16/crash-recovery.html)中提到过，Undo Log用来记录每次修改之前的历史值，配合Redo Log用于故障恢复。这也就是InnoDB中Undo Log的第一个作用：
+
+
 
 ### 1. 事务回滚
 
@@ -26,13 +33,9 @@ Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个
 
 # 什么样的Undo Log
 
-InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版本的数据存在的。因此，Crash Recovery时利用Undo Log的事务回滚完全可以在后台，像正常运行的事务一样异步回滚，从而让数据库先恢复服务。因此，Undo Log的设计思路，不同于[庖丁解InnoDB之REDO LOG](http://catkang.github.io/2020/02/27/mysql-redo.html)中讲过的基于Page的Redo Log，Undo Log需要的是事务之间的并发，以及方便的多版本数据维护，其重放逻辑不希望因DB的物理存储变化而变化，如索引Page的Split或Merge。因此，InnoDB中的Undo Log采用了**Logical Logging**的方式。
+[庖丁解InnoDB之REDO LOG](http://catkang.github.io/2020/02/27/mysql-redo.html)中讲过的基于Page的Redo Log可以更好的支持并发的Redo应用，从而缩短DB的Crash Recovery时间。而对于Undo Log来说，InnoDB用Undo Log来实现MVCC，DB运行过程中是允许有历史版本的数据存在的。因此，Crash Recovery时利用Undo Log的事务回滚完全可以在后台，像正常运行的事务一样异步回滚，从而让数据库先恢复服务。因此，Undo Log的设计思路不同于Redo Log，Undo Log需要的是事务之间的并发，以及方便的多版本数据维护，其重放逻辑不希望因DB的物理存储变化而变化。因此，InnoDB中的Undo Log采用了基于事务的Logical Logging**的方式。
 
 同时，更多的责任意味着更复杂的管理逻辑，InnoDB中其实是把Undo当做一种数据来维护和使用的，也就是说，Undo Log日志本身也像其他的数据库数据一样，会写自己对应的Redo Log，通过Redo Log来保证自己的原子性。因此，更合适的称呼应该是**Undo Data**。
-
-除此之外，每个写事务都需要维护自己的Undo Log，为了更好的事务间并发， Undo Log应该是单个事务独享的的，相对于Page-Oriented Redo我们可以称之为**Transaction-Oriented Undo**。
-
-
 
 
 
@@ -40,11 +43,13 @@ InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版
 
 每当InnoDB中需要修改某个Record时，都会将其历史版本写入一个Undo Log中，这种Undo Record是Update类型。当插入新的Record时，还没有一个历史版本，但为了方便事务回滚时做逆向（Delete）操作，这里还是会写入一个Insert类型的Undo Record。
 
+
+
 ### Insert类型的Undo Record
 
 这种Undo Record在代码中对应的是TRX_UNDO_INSERT_REC类型。不同于Update类型的Undo Record，Insert Undo Record仅仅是为可能的事务回滚准备的，并不在MVCC功能中承担作用。因此只需要记录对应Record的Key，供回滚时查找Record位置即可。
 
-![insert_undo_record](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/insert_undo_record-5327118.png)
+![insert_undo_record](http://catkang.github.io/assets/img/innodb_undo/insert_undo_record.png)
 
 其中Undo Number是Undo的一个递增编号，Table ID用来表示是哪张表的修改。下面一组Key Fields的长度不定，因为对应表的主键可能由多个field组成，这里需要记录Record完整的主键信息，回滚的时候可以通过这个信息在索引中定位到对应的Record。除此之外，在Undo Record的头尾还各留了两个字节用户记录其前序和后继Undo Record的位置。
 
@@ -54,7 +59,7 @@ InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版
 
 由于MVCC需要保留Record的多个历史版本，当某个Record的历史版本还在被使用时，这个Record是不能被真正的删除的。因此，当需要删除时，其实只是修改对应Record的Delete Mark标记。对应的，如果这时这个Record又重新插入，其实也只是修改一下Delete Mark标记，也就是将这两种情况的delete和insert转变成了update操作。再加上常规的Record修改，因此这里的Update Undo Record会对应三种Type：TRX_UNDO_UPD_EXIST_REC、TRX_UNDO_DEL_MARK_REC和TRX_UNDO_UPD_DEL_REC。他们的存储内容也类似：
 
-![update_undo_record](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/update_undo_record.png)
+![update_undo_record](http://catkang.github.io/assets/img/innodb_undo/update_undo_record.png)
 
 除了跟Insert Undo Record相同的头尾信息，以及主键Key Fileds之外，Update Undo Record增加了：
 
@@ -73,13 +78,13 @@ InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版
 ### 逻辑组织方式 - Undo Log
 
 每个事务其实会修改一组的Record，对应的也就会产生一组Undo Record，这些Undo Record收尾相连就组成了这个事务的**Undo Log**。除了一个个的Undo Record之外，还在开头增加了一个Undo Log Header来记录一些必要的控制信息，因此，一个Undo Log的结构如下所示：
-![undo_log](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_log.png)
+![undo_log](http://catkang.github.io/assets/img/innodb_undo/undo_log.png)
 
 **Undo Log Header**中记录了产生这个Undo Log的事务的Trx ID；Trx No是事务的提交顺序，也会用这个来判断是否能Purge，这个在后面会详细介绍；Delete Mark标明该Undo Log中有没有TRX_UNDO_DEL_MARK_REC类型的Undo Record，避免Purge时不必要的扫描；Log Start Offset中记录Undo Log Header的结束位置，方便之后Header中增加内容时的兼容；之后是一些Flag信息；Next Undo Log及Prev Undo Log标记前后两个Undo Log，这个会在接下来介绍；最后通过History List Node将自己挂载到为Purge准备的History List中。
 
  索引中的同一个Record被不同事务修改，会产生不同的历史版本，这些历史版本又通过**Rollptr**穿成一个链表，供MVCC使用。如下图所示：
 
-![undo_logicial](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_logical.png)
+![undo_logicial](http://catkang.github.io/assets/img/innodb_undo/undo_logical.png)
 
 示例中有三个事务操作了表t上，主键id是1的记录，首先事务I插入了这条记录并且设置filed a的值是A，之后事务J和事务K分别将这条id为1的记录中的filed a的值修改为了B和C。I，J，K三个事务分别有自己的逻辑上连续的三条Undo Log，每条Undo Log有自己的Undo Log Header。从索引中的这条Record沿着Rollptr可以依次找到这三个事务Undo Log中关于这条记录的历史版本。同时可以看出，Insert类型Undo Record中只记录了对应的主键值：id=1，而Update类型的Undo Record中还记录了对应的历史版本的生成事务Trx_id，以及被修改的field a的历史值。
 
@@ -89,7 +94,7 @@ InnoDB中为了用Undo Log来实现MVCC，DB运行过程中是允许有历史版
 
 上面描述了一个Undo Log的结构，一个事务会产生多大的Undo Log本身是不可控的，而最终写入磁盘却是按照固定的块大小为单位的，InnoDB中默认是16KB，那么如何用固定的块大小承载不定长的Undo Log，以实现高效的空间分配、复用，避免空间浪费。InnoDB的**基本思路**是让多个较小的Undo Log紧凑存在一个Undo Page中，而对较大的Undo Log则随着不断的写入，按需分配足够多的Undo Page分散承载。下面我们就看看这部分的物理存储方式：
 
-![undo_physical](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_physical.png)
+![undo_physical](http://catkang.github.io/assets/img/innodb_undo/undo_physical.png)
 
 如上所示，是一个**Undo Segment**的示意图，每个写事务开始写操作之前都需要持有一个Undo Segment，一个Undo Segment中的所有磁盘空间的分配和释放，也就是16KB Page的申请和释放，都是由一个FSP的Segment管理的，这个跟索引中的Leaf Node Segment和Non-Leaf Node Segment的管理方式是一致的，这部分之后会有单独的文章来进行介绍。
 
@@ -107,7 +112,7 @@ Undo Page剩余的空间都是用来存放Undo Log的，对于像上图Undo Log 
 
 
 
-![undo_physical](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_tablespace.png)
+![undo_tablespace](http://catkang.github.io/assets/img/innodb_undo/undo_tablespace.png)
 
 
 
@@ -115,33 +120,9 @@ Undo Page剩余的空间都是用来存放Undo Log的，对于像上图Undo Log 
 
 上面介绍的都是Undo数据在磁盘上的组织结构，除此之外，在内存中也会维护对应的数据结构来管理Undo Log，如下图所示：
 
-![undo_memory](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_memory.png)
+![undo_memory](http://catkang.github.io/assets/img/innodb_undo/undo_memory.png)
 
-对应每个磁盘Undo Tablespace会有一个**undo::Tablespace**的内存结构，其中最主要的就是一组trx_rseg_t的集合，**trx_rseg_t**对应的就是上面介绍过的一个Rollback Segment Header，除了一些基本的元信息之外，trx_rseg_t中维护了四个trx_undo_t的链表，**Update List**中是正在被使用的用于写入Update类型Undo的Undo Segment；**Update Cache List**中是空闲空间比较多，可以被后续事务复用的Update类型Undo Segment;对应的，**Insert List**和**Insert Cache List**分别是正在使用中的Insert类型Undo Segment，和空间空间较多，可以被后续复用的Insert类型Undo Segment。因此**trx_undo_t**对应的就是上面介绍过的Undo Segment，如下所示，可以看出其中的信息跟Undo Segment中的文件结构是对应的。
-
-``` c++
-struct trx_undo_t {
-	ulint id;
-	ulint type; // TRX_UNDO_INSERT or TRX_UNDO_UPDATE
-	ulint state;
-	ibool del_marks;
-	trx_id_t trx_id; // 持有的事务id
-	...
-	trx_rseg_t *rseg; // 属于的rollback segment
-	...
-	page_no_t hdr_page_no;
-	ulint hdr_offset;  // undo log header 所在的page_no和page内偏移
-	page_no_t last_page_no; // undo log中的最后一个page
-	ulint size; // 有多少个page
-	...
-
-	UT_LIST_NODE_T(trx_undo_t) undo_list;  // trx_rseg_t上的链表项
-}
-```
-
-接下来，我们就从Undo的写入、Undo用于Rollback、用户MVCC、用户Crash Recovery以及如何清理Undo等方面来介绍InnoDB中Undo的角色和功能。
-
-
+对应每个磁盘Undo Tablespace会有一个**undo::Tablespace**的内存结构，其中最主要的就是一组trx_rseg_t的集合，**trx_rseg_t**对应的就是上面介绍过的一个Rollback Segment Header，除了一些基本的元信息之外，trx_rseg_t中维护了四个trx_undo_t的链表，**Update List**中是正在被使用的用于写入Update类型Undo的Undo Segment；**Update Cache List**中是空闲空间比较多，可以被后续事务复用的Update类型Undo Segment;对应的，**Insert List**和**Insert Cache List**分别是正在使用中的Insert类型Undo Segment，和空间空间较多，可以被后续复用的Insert类型Undo Segment。因此**trx_undo_t**对应的就是上面介绍过的Undo Segment。接下来，我们就从Undo的写入、Undo用于Rollback、MVCC、Crash Recovery以及如何清理Undo等方面来介绍InnoDB中Undo的角色和功能。
 
 
 
@@ -161,11 +142,11 @@ struct trx_undo_t {
 
 InnoDB中的事务可能会由用户主动触发Rollback；也可能因为遇到死锁异常Rollback；或者发生Crash，重启后对未提交的事务回滚。在Undo层面来看，这些回滚的操作是一致的，基本的过程就是从该事务的Undo Log中，从后向前依次读取Undo Record，并根据其中内容做逆向操作，恢复索引记录。
 
-回滚的入口是函数**row_undo**，其中会先调用**trx_roll_pop_top_rec_of_trx**获取并删除该事务的最后一条Undo Record，回忆上面介绍的Undo Segment的结构，从Undo Segment Header中记录的Page List可以找到当前事务的最后一个Undo Page的Header，并根据Header上记录的Lastest Log Record Offset便可以方便的定位最后一条Undo Record。之后根据Undo Record上面的前序指针找到前一个Undo Record，依次进行处理。如下图：
+回滚的入口是函数**row_undo**，其中会先调用**trx_roll_pop_top_rec_of_trx**获取并删除该事务的最后一条Undo Record。如下图例子中的Undo Log包括三条Undo Records，其中Record 1在Undo Page 1中，Record 2，3在Undo Page 2中，先通过从Undo Segment Header中记录的Page List找到当前事务的最后一个Undo Page的Header，并根据Undo Page 2的Header上记录的Free Space Offset定位最后一条Undo Record结束的位置，当然实际运行时，这两个值是缓存在trx_undo_t的top_page_no和top_offset中的。利用Prev Record Offset可以找到Undo Record 3，做完对应的回滚操作之后，再通过前序指针Prev Record Offset找到前一个Undo Record，依次进行处理。处理完当前Page中的所有Undo Records后，再沿着Undo Page Header中的List找到前一个Undo Page，重复前面的过程，完成一个事务所有Page上的所有Undo Records的回滚。
 
-![undo_memory](/Users/wangkang/Documents/github/catkang.github.io/assets/img/innodb_undo/undo_rollback.png)
+![undo_rollback](http://catkang.github.io/assets/img/innodb_undo/undo_rollback.png)
 
-拿到Undo Record之后，自然地，就是对其中内容的解析，这里会调用**row_undo_ins_parse_undo_rec**，从Undo Record中获取修改行的table，解析出其中记录的主键信息，如果是update类型，还会拿到一个update vector记录其相对于更新的一个版本的变化。
+拿到一个Undo Record之后，自然地，就是对其中内容的解析，这里会调用**row_undo_ins_parse_undo_rec**，从Undo Record中获取修改行的table，解析出其中记录的主键信息，如果是update类型，还会拿到一个update vector记录其相对于更新的一个版本的变化。
 
 **TRX_UNDO_INSERT_REC**类型的Undo回滚在**row_undo_ins**中进行，insert的逆向操作当然就是delete，根据从Undo Record中解析出来的主键，用**row_undo_search_clust_to_pcur**定位到对应的ROW， 分别调用**row_undo_ins_remove_sec_rec**和**row_undo_ins_remove_clust_rec**在二级索引和主索引上将当前行删除。
 
@@ -179,13 +160,11 @@ update类型的undo包括TRX_UNDO_UPD_EXIST_REC，TRX_UNDO_DEL_MARK_REC和TRX_UN
 
 多版本的目的是为了避免写事务和读事务的互相等待，那么每个读事务都需要在不对Record加Lock的情况下， 找到对应的应该看到的历史版本。所谓历史版本就是假设在该只读事务开始的时候对整个DB打一个快照，之后该事务的所有读请求都从这个快照上获取。当然实现上不能真正去为每个事务打一个快照，这个时间空间都太高了。InnoDB的做法，是在读事务第一次读取的时候获取一份ReadView，并一直持有，其中记录所有当前活跃的写事务ID，由于写事务的ID是自增分配的，通过这个ReadView我们可以知道在这一瞬间，哪些事务已经提交哪些还在运行，根据Read Committed的要求，未提交的事务的修改就是不应该被看见的，对应地，已经提交的事务的修改应该被看到。
 
-作为存储历史版本的Undo Record，其中记录的trx_id就是做这个可见性判断的，对应的主索引的Record上也有这个值。当一个读事务拿着自己的ReadView访问某个表索引上的记录时，会通过比较Record上的trx_id确定是否是可见的版本，如果不可见就沿着Record或Undo Record中记录的rollptr一路找更老的历史版本。
+作为存储历史版本的Undo Record，其中记录的trx_id就是做这个可见性判断的，对应的主索引的Record上也有这个值。当一个读事务拿着自己的ReadView访问某个表索引上的记录时，会通过比较Record上的trx_id确定是否是可见的版本，如果不可见就沿着Record或Undo Record中记录的rollptr一路找更老的历史版本。如下图所示，事务R开始需要查询表t上的id为1的记录，R开始时事务I已经提交，事务J还在运行，事务K还没开始，这些信息都被记录在了事务R的ReadView中。事务R从索引中找到对应的这条Record[1, C]，对应的trx_id是K，不可见。沿着Rollptr找到Undo中的前一版本[1, B]，对应的trx_id是J，不可见。继续沿着Rollptr找到[1, A]，trx_id是I可见，返回结果。
 
-TODO 图
+![undo_mvcc](http://catkang.github.io/assets/img/innodb_undo/undo_mvcc.png)
 
 前面提到过，作为Logical Log，Undo中记录的其实是前后两个版本的diff信息，而读操作最终是要获得完整的Record内容的，也就是说这个沿着rollptr指针一路查找的过程中需要用Undo Record中的diff内容依次构造出对应的历史版本，这个过程在函数**row_search_mvcc**中，其中**trx_undo_prev_version_build**会根据当前的rollptr找到对应的Undo Record位置，这里如果是rollptr指向的是insert类型，或者找到了已经Purge了的位置，说明到头了，会直接返回失败。否则，就会解析对应的Undo Record，恢复出trx_id、指向下一条Undo Record的rollptr、主键信息，diff信息update vector等信息。之后通过**row_upd_rec_in_place**，用update vector修改当前持有的Record拷贝中的信息，获得Record的这个历史版本。之后调用自己ReadView的**changes_visible**判断可见性，如果可见则返回用户。完成这个历史版本的读取。
-
-
 
 
 
@@ -201,38 +180,54 @@ Crash Recovery完成之前，会启动在**srv_dict_recover_on_restart**中启�
 
 # Undo的清理
 
-我们已经知道，InnoDB在Undo Log中保存了多份历史版本来实现MVCC，当某个历史版本已经确认不会被任何现有的和未来的事务看到的时候，就应该被清理掉。因此就需要有办法判断哪些Undo Log不会再被看到。InnoDB中每个写事务结束时都会拿一个递增的编号**trx_no**作为事务的提交序号，而每个读事务会在自己的ReadView中记录自己开始的时候看到的最大的trx_no为**m_low_limit_no**。那么，如果一个事务的trx_no小于当前所有活跃的读事务Readview中的这个**m_low_limit_no**，说明这个事务在所有的读开始之前已经提交了，其修改的新版本是可见的， 因此不再需要通过undo构建之前的版本，这个事务的Undo Log也就可以被清理了。
+我们已经知道，InnoDB在Undo Log中保存了多份历史版本来实现MVCC，当某个历史版本已经确认不会被任何现有的和未来的事务看到的时候，就应该被清理掉。因此就需要有办法判断哪些Undo Log不会再被看到。InnoDB中每个写事务结束时都会拿一个递增的编号**trx_no**作为事务的提交序号，而每个读事务会在自己的ReadView中记录自己开始的时候看到的最大的trx_no为**m_low_limit_no**。那么，如果一个事务的trx_no小于当前所有活跃的读事务Readview中的这个**m_low_limit_no**，说明这个事务在所有的读开始之前已经提交了，其修改的新版本是可见的， 因此不再需要通过undo构建之前的版本，这个事务的Undo Log也就可以被清理了。如下图所所以，由于ReadView List中最老的ReadView在获取时，Transaction J就已经Commit，因此所有的读事务都一定能被Index中的版本或者第一个Undo历史版本满足，不需要更老的Undo，因此整个Transaction J的Undo Log都可以清理了。
 
-TODO 图
+![undo_purge](http://catkang.github.io/assets/img/innodb_undo/undo_purge.png)
 
 Undo的清理工作是由专门的后台线程**srv_purge_coordinator_thread**进行扫描和分发， 并由多个**srv_worker_thread**真正清理的。coordinator会首先在函数**trx_purge_attach_undo_recs**中扫描innodb_purge_batch_size配置个Undo Records，作为一轮清理的任务分发给worker。
 
+
+
 ### 扫描一批要清理Undo Records
 
-事务结束的时候，对于需要Purge的Update类型的Undo Log，会挂载到Rollback Segment Header的**History List**上。Undo Log的回收的基本思路，就是遍历所有Rollback Segment Header的History List，依次做清理操作。Undo Log的清理顺序应该是按照trx_no从小到大进行，那么就需要在多个History List上找一个全局有序的序列，如下图所示：
+事务结束的时候，对于需要Purge的Update类型的Undo Log，会按照事务提交的顺序trx_no，挂载到Rollback Segment Header的**History List**上。Undo Log回收的基本思路，就是按照trx_no从小到大，依次遍历所有Undo Log进行清理操作。前面介绍了，InnoDB中有多个Rollback Segment，那么就会有多个History List，每个History List内部事务有序，但还需要从多个History List上找一个trx_no全局有序的序列，如下图所示：
 
-![image-20211026010007239](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211026010007239.png)
+![undo_purge_1](http://catkang.github.io/assets/img/innodb_undo/undo_purge_1.png)
 
-以四个History List为例，每次都需要从多个History List中找到下一个拥有最小trx_no的Undo Log，InnoDB这里引入了一个成为**purge_queue**的优先队列：
+图中的事务编号是按照InnoDB这里引入了一个堆结构**purge_queue**，用来依次从所有History List中找到下一个拥有最小trx_no的事务。purge_queue中记录了所有等待Purge的Rollback Segment和其History中trx_no最小的事务，**trx_purge_choose_next_log**依次从purge_queue中pop出拥有全局最小trx_no的Undo Log。调用**trx_purge_get_next_rec**遍历对应的Undo Log，处理每一条Undo Record。之后继续调用**trx_purge_rseg_get_next_history_log**从purge_queue中获取下一条trx_no最小的Undo Log，并且将当前Rollback Segment上的下一条Undo Log继续push进purge_queue，等待后续的顺序处理。对应上图的处理过程和对应的函数调用，如下图所示：
 
-![image-20211026010144439](/Users/wangkang/Documents/github/catkang.github.io/_posts/tech/image-20211026010144439.png)
+```
+[trx_purge_choose_next_log] Pop T1 from purge_queue;
+[trx_purge_get_next_rec] Iterator T1;
+[trx_purge_rseg_get_next_history_log] Get T1 next: T5;
+[trx_purge_choose_next_log] Push T5 into purge_queue;
 
-事务结束的时候，除了挂载History List之外，还需要将当前的Undo Log，以其trx_no push进purge_queue。后台的Purge 过程会依次从purge_queue中获取，拥有最小trx_no的Undo Log，调用**trx_purge_get_next_rec**从前往后，依次获得其中的每一条Undo Record，并作为Purge的任务分发给worker。当一条Undo Log处理完成后，调用**trx_purge_choose_next_log**从purge_queue中获取下一条trx_no最小的Undo Log，并且将当前Rollback Segment上的下一条Undo Log继续push进purge_queue，等待后续的顺序处理。
+[trx_purge_choose_next_log] Pop T4 from purge_queue;
+[trx_purge_get_next_rec] Iterator T4;
+[trx_purge_rseg_get_next_history_log] Get T4 next: ...;
+[trx_purge_choose_next_log] Push ... into purge_queue;
+
+[trx_purge_choose_next_log] Pop T5 from purge_queue;
+[trx_purge_get_next_rec] Iterator T5;
+[trx_purge_rseg_get_next_history_log] Get T5 next: T6;
+[trx_purge_choose_next_log] Push T6 into purge_queue;
+......
+```
+
+其中，**trx_purge_get_next_rec**会从上到下遍历一个Undo Log中的所有Undo Record，这个跟前面讲过的Rollback时候从下到上的遍历方向是相反的，还是以同样的场景为例，要Purge的Undo Log横跨两个Undo Page，Undo Record 1在Page 1中，而Undo Record 2，3在Page 2中。如下图所示，首先会从当前的Undo Log Header中找到第一个Undo Record的位置Log Start Offset，处理完Undo Record1之后沿着Next Record Offset去找下一个Undo Record，当找到Page末尾时，要通过Page List Node找下一个Page，找到Page内的第一个Undo Record，重复上面的过程直到找出所有的Undo Record。
+
+![undo_purge_2](http://catkang.github.io/assets/img/innodb_undo/undo_purge_2.png)
 
 
 
-对每个要Purge的Undo Record，在真正删除它本身之前，可能还需要处理一些索引上的信息，这是由于正常运行过程中，当需要删除某个Record时，为了保证其之前的历史版本还可以通过Rollptr找到，Record是没有真正删除的，只是打了Delete Mark的标记，并作为一种特殊的Update操作记录了Undo Record。那么在对应的TRX_UNDO_DEL_MARK_REC类型的Undo Record被清理之前，需要先从索引上真正地删除对应的delete
-
-mark的记录。因此Undo Record的清理工作会分为两个过程：
+对每个要Purge的Undo Record，在真正删除它本身之前，可能还需要处理一些索引上的信息，这是由于正常运行过程中，当需要删除某个Record时，为了保证其之前的历史版本还可以通过Rollptr找到，Record是没有真正删除的，只是打了Delete Mark的标记，并作为一种特殊的Update操作记录了Undo Record。那么在对应的TRX_UNDO_DEL_MARK_REC类型的Undo Record被清理之前，需要先从索引上真正地删除这个Delete Mark的记录。因此Undo Record的清理工作会分为两个过程：
 
 - TRX_UNDO_DEL_MARK_REC类型Undo Record对应的Record的真正删除，称为**Undo Purge**；
 - 以及Undo Record本身从旧到新的删除，称为**Undo Truncate**。
 
-除此之外，当配置的独立undo tablespace大于两个的时候，InnoDB支持通过truncate来缩小超过配置大小的undo tablespace：
+除此之外，当配置的独立Undo Tablespace大于两个的时候，InnoDB支持通过重建来缩小超过配置大小的Undo Tablespace：
 
-- undo tablespace的重建缩小，成为**Undo Tablespace Truncate**
-
-
+- Undo Tablespace的重建缩小，称为**Undo Tablespace Truncate**
 
 
 
@@ -250,21 +245,31 @@ coordinator线程会等待所有的worker完成一批Undo Records的Purge工作�
 
 
 
-
-
-
-
 ### Undo Tablespace Truncate
 
 如果**innodb_trx_purge_truncate**配置打开，在函数**trx_purge_truncate**中还会去尝试重建Undo Tablespaces以缩小文件空间占用。Undo Truncate之后，会在函数**trx_purge_mark_undo_for_truncate**中扫描所有的Undo Tablespace，文件大小大于配置的**innodb_max_undo_log_size**的Tablespace会被标记为inactive，每一时刻最多有一个Tablespace处于inactive，inactive的Undo Tablespace上的所有Rollback Segment都不参与给新事物的分配，等该文件上所有的活跃事务退出，并且所有的Undo Log都完成Purge之后，这个Tablespace就会被通过**trx_purge_initiate_truncate**重建，包括重建Undo Tablespace中的文件结构和内存结构，之后被重新标记为active，参与分配给新的事务使用。
 
 
 
-
-
 # 总结：
 
+本文首先概括地介绍了Undo Log的角色，之后介绍了一个Undo Record中的内容，紧接着介绍它的逻辑组织方式、物理组织方式、文件组织方式以及内存组织方式，详细描述了Undo Tablespace、Rollback Segment、Undo Segment、Undo Log和Undo Record的之间的关系和层级。这些组织方式都是为了更好的使用和维护Undo信息。最后在此基础上，介绍了Undo在各个重要的DB功能中的作用和实现方式，包括事务回滚、MVCC、Crash Recovery、Purge等。
 
 
 
+# 参考：
+
+[1] [MySQL  8.0.11Source Code Documentation: Format of redo log](https://dev.mysql.com/doc/dev/mysql-server/8.0.11/PAGE_INNODB_REDO_LOG_FORMAT.html)
+
+[2] [MySQL Source Code](https://github.com/mysql/mysql-server)
+
+[3] [The basics of the InnoDB undo logging and history system](https://blog.jcole.us/2014/04/16/the-basics-of-the-innodb-undo-logging-and-history-system/#:~:text=InnoDB%20keeps%20a%20copy%20of%20everything%20that%20is%20changed&text=It's%20called%20an%20undo%20log,record%20to%20its%20previous%20version.)
+
+[4] [MySQL · 引擎特性 · InnoDB undo log 漫游](http://mysql.taobao.org/monthly/2015/04/01/)
+
+[5] [数据库故障恢复机制的前世今生](http://catkang.github.io/2019/01/16/crash-recovery.html)
+
+[6] [浅析数据库并发控制机制](http://catkang.github.io/2018/09/19/concurrency-control.html)
+
+[7] [庖丁解InnoDB之REDO LOG](http://catkang.github.io/2020/02/27/mysql-redo.html) 
 
