@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 数据库故障恢复机制的前世今生
-category: 数据库理论
+category: 数据库
 tags: [Database，Crash Recovery]
 keywords: 故障恢复，Crash Recovery，Database，Database，Durability，Atomic
 ---

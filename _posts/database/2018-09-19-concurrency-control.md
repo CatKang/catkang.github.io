@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 浅析数据库并发控制机制
-category: 数据库理论
+category: 数据库
 tags: [Concurrency Control，Transaction, Database]
 keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control，Transaction, Database
 ---
