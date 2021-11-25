@@ -7,7 +7,7 @@ keywords: MySQL，InnoDB，UNDO，undo, undo log
 
 ---
 
-Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个最主要的部分，并发控制（Concurrency  Control）和故障恢复（Crash Recovery），InnoDB中Undo Log的实现上亦日志亦数据。本文将从其作用、设计思路、记录内容、组织结构，以及各种功能实现等方面，整体介绍InnoDB中的Undo Log，文章会深入一定的代码实现，但在细节上还是希望用抽象的实现思路代替具体的代码。本文基于MySQL 8.0，但在大多数的设计思路上MySQL的各个版本都是一致的。考虑到篇幅有限，以及避免过多信息的干扰，从而能够聚焦Undo Log本身的内容，本文中一笔带过或有意省略了一些内容，包括索引、事务系统、XA事务、Virtual Column、外部记录、Blob等。
+Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个最主要的部分，并发控制（Concurrency  Control）和故障恢复（Crash Recovery），InnoDB中Undo Log的实现亦日志亦数据。本文将从其作用、设计思路、记录内容、组织结构，以及各种功能实现等方面，整体介绍InnoDB中的Undo Log，文章会深入一定的代码实现，但在细节上还是希望用抽象的实现思路代替具体的代码。本文基于MySQL 8.0，但在大多数的设计思路上MySQL的各个版本都是一致的。考虑到篇幅有限，以及避免过多信息的干扰，从而能够聚焦Undo Log本身的内容，本文中一笔带过或有意省略了一些内容，包括索引、事务系统、临时表、XA事务、Virtual Column、外部记录、Blob等。
 
 
 
@@ -19,7 +19,7 @@ Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个
 
 ### 1. 事务回滚
 
-在设计DB时，我们假设数据库可能在任何时刻，由于如硬件故障，软件Bug，运维操作等原因突然崩溃。这个时候尚未完成提交的事务可能已经有部分数据写入了磁盘，如果不加处理，会违反数据库对Atomic的保证，也就是任何事务的修改要么全部提交，要么全部取消。针对这个问题，直观的想法是等到事务真正提交时，才能允许这个事务的任何修改落盘，也就是No-Steal策略。显而易见，这种做法一方面造成很大的内存空间压力，另一方面提交时的大量随机IO会极大的影响性能。因此，数据库实现中通常会在正常事务进行中，就不断的连续写入Undo Log，来记录本次修改之前的历史值。当Crash真正发生时，可以在Recovery过程中通过回放Undo Log将未提交事务的修改抹掉。InnoDB采用的就是这种方式。
+在设计数据库时，我们假设数据库可能在任何时刻，由于如硬件故障，软件Bug，运维操作等原因突然崩溃。这个时候尚未完成提交的事务可能已经有部分数据写入了磁盘，如果不加处理，会违反数据库对Atomic的保证，也就是任何事务的修改要么全部提交，要么全部取消。针对这个问题，直观的想法是等到事务真正提交时，才能允许这个事务的任何修改落盘，也就是No-Steal策略。显而易见，这种做法一方面造成很大的内存空间压力，另一方面提交时的大量随机IO会极大的影响性能。因此，数据库实现中通常会在正常事务进行中，就不断的连续写入Undo Log，来记录本次修改之前的历史值。当Crash真正发生时，可以在Recovery过程中通过回放Undo Log将未提交事务的修改抹掉。InnoDB采用的就是这种方式。
 
 既然已经有了在Crash Recovery时支持事务回滚的Undo Log，自然地，在正常运行过程中，死锁处理或用户请求的事务回滚也可以利用这部分数据来完成。
 
@@ -33,7 +33,7 @@ Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个
 
 # 什么样的Undo Log
 
-[庖丁解InnoDB之REDO LOG](http://catkang.github.io/2020/02/27/mysql-redo.html)中讲过的基于Page的Redo Log可以更好的支持并发的Redo应用，从而缩短DB的Crash Recovery时间。而对于Undo Log来说，InnoDB用Undo Log来实现MVCC，DB运行过程中是允许有历史版本的数据存在的。因此，Crash Recovery时利用Undo Log的事务回滚完全可以在后台，像正常运行的事务一样异步回滚，从而让数据库先恢复服务。因此，Undo Log的设计思路不同于Redo Log，Undo Log需要的是事务之间的并发，以及方便的多版本数据维护，其重放逻辑不希望因DB的物理存储变化而变化。因此，InnoDB中的Undo Log采用了基于事务的Logical Logging**的方式。
+[庖丁解InnoDB之REDO LOG](http://catkang.github.io/2020/02/27/mysql-redo.html)中讲过的基于Page的Redo Log可以更好的支持并发的Redo应用，从而缩短DB的Crash Recovery时间。而对于Undo Log来说，InnoDB用Undo Log来实现MVCC，DB运行过程中是允许有历史版本的数据存在的。因此，Crash Recovery时利用Undo Log的事务回滚完全可以在后台，像正常运行的事务一样异步回滚，从而让数据库先恢复服务。因此，Undo Log的设计思路不同于Redo Log，Undo Log需要的是事务之间的并发，以及方便的多版本数据维护，其重放逻辑不希望因DB的物理存储变化而变化。因此，InnoDB中的Undo Log采用了基于事务的**Logical Logging**的方式。
 
 同时，更多的责任意味着更复杂的管理逻辑，InnoDB中其实是把Undo当做一种数据来维护和使用的，也就是说，Undo Log日志本身也像其他的数据库数据一样，会写自己对应的Redo Log，通过Redo Log来保证自己的原子性。因此，更合适的称呼应该是**Undo Data**。
 
@@ -41,13 +41,13 @@ Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个
 
 # Undo Record中的内容
 
-每当InnoDB中需要修改某个Record时，都会将其历史版本写入一个Undo Log中，这种Undo Record是Update类型。当插入新的Record时，还没有一个历史版本，但为了方便事务回滚时做逆向（Delete）操作，这里还是会写入一个Insert类型的Undo Record。
+每当InnoDB中需要修改某个Record时，都会将其历史版本写入一个Undo Log中，对应的Undo Record是Update类型。当插入新的Record时，还没有一个历史版本，但为了方便事务回滚时做逆向（Delete）操作，这里还是会写入一个Insert类型的Undo Record。
 
 
 
 ### Insert类型的Undo Record
 
-这种Undo Record在代码中对应的是TRX_UNDO_INSERT_REC类型。不同于Update类型的Undo Record，Insert Undo Record仅仅是为可能的事务回滚准备的，并不在MVCC功能中承担作用。因此只需要记录对应Record的Key，供回滚时查找Record位置即可。
+这种Undo Record在代码中对应的是TRX_UNDO_INSERT_REC类型。不同于Update类型的Undo Record，Insert Undo Record仅仅是为了可能的事务回滚准备的，并不在MVCC功能中承担作用。因此只需要记录对应Record的Key，供回滚时查找Record位置即可。
 
 ![insert_undo_record](http://catkang.github.io/assets/img/innodb_undo/insert_undo_record.png)
 
