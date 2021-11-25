@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 庖丁解LevelDB之概览
-category: 技术
+category: 庖丁解LevelDB
 tags: [leveldb, nosql，存储引擎，源码，source code, 介绍，概述]
 keywords: leveldb，nosql，存储引擎，源码，source code，介绍，概述
 ---

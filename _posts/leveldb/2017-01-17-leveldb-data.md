@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 庖丁解LevelDB之数据存储
-category: 技术
+category: 庖丁解LevelDB
 tags: [leveldb, nosql，存储引擎，源码，source code, 数据格式，数据存储，数据]
 keywords: leveldb，nosql，存储引擎，源码，source code，数据格式，数据存储，数据
 ---

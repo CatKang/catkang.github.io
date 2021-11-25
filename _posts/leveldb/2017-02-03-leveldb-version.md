@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 庖丁解LevelDB之版本控制
-category: 技术
+category: 庖丁解LevelDB
 tags: [leveldb, nosql，存储引擎，源码，source code，版本，Version，元信息]
 keywords: leveldb，nosql，存储引擎，源码，source code，版本，Version，元信息
 ---

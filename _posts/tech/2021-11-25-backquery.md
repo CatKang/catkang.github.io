@@ -1,6 +1,6 @@
 ---
 layout: post
-title: PolarDB Flashback Query 让历史随时可见
+title: PolarDB闪回查询，让历史随时可见
 category: 技术
 tags: [Database, MySQL, InnoDB, PolarDB]
 keywords: MySQL，InnoDB，Database，PolarDB

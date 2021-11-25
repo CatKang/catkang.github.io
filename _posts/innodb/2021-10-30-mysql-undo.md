@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 庖丁解InnoDB之Undo LOG
-category: 技术
+category: 庖丁解InnoDB
 tags: [Database, MySQL, InnoDB, UNDO]
 keywords: MySQL，InnoDB，UNDO，undo, undo log
 

@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 庖丁解InnoDB之REDO LOG
-category: 技术
+category: 庖丁解InnoDB
 tags: [Database, MySQL, InnoDB, REDO]
 keywords: MySQL，InnoDB，REDO，redo, redo log
 ---

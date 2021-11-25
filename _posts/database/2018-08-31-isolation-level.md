@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 数据库事务隔离发展历史
-category: 技术
+category: 数据库理论
 tags: [Isolation Level，Transaction]
 keywords: 隔离级别, 并行控制，事务，Isolation，Concurrent Control，Transaction
 ---
