@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Ceilometer 源码学习 - Polling Agent
-category: 技术
+category: 
 tags: [Ceilometer, Source]
 keywords: Ceilometer, Central Agent, Compute Agent, Source
 ---

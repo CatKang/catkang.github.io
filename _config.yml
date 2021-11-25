@@ -13,9 +13,9 @@ filter: 'category'
 recent_num: 20
 
 # Social account
+zhihu: cat_kang
 github: CatKang
 linkedin: kang-wang-b0357072
-zhihu: cat_kang
 stackoverflow: 2682705/catkang
 
 # avatar and Favicon

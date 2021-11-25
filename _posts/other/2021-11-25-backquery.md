@@ -1,7 +1,7 @@
 ---
 layout: post
 title: PolarDB闪回查询，让历史随时可见
-category: 技术
+category:
 tags: [Database, MySQL, InnoDB, PolarDB]
 keywords: MySQL，InnoDB，Database，PolarDB
 

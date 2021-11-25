@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Ceilometer 源码学习 - Notification Agent
-category: 技术
+category:
 tags: [Ceilometer, Source, Notification]
 keywords: Ceilometer, Notification Agent, Source
 ---

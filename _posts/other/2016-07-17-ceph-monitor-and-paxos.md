@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Ceph Monitor and Paxos
-category: 技术
+category:
 tags: [Ceph, Ceph Monitor, Paxos, 源码, 实现, 源码介绍, 分布式存储, 元信息管理, 一致性协议]
 keywords: Ceph, Ceph Monitor, Paxos, 源码, 实现, 源码介绍, 分布式存储, 元信息管理, 一致性协议
 ---

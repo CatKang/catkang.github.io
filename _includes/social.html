@@ -7,6 +7,10 @@
   <a href="http://www.weibo.com/{{ site.weibo }}" class="sidebar-social-icon weibo" target="_blank"></a>
 {% endif %}
 
+{% if site.zhihu %}
+  <a href="https://www.zhihu.com/people/{{ site.zhihu }}" class="sidebar-social-icon zhihu" target="_blank"></a>
+{% endif %}
+
 {% if site.github %}
   <a href="https://github.com/{{ site.github }}" class="sidebar-social-icon github" target="_blank"></a>
 {% endif %}
@@ -17,10 +21,6 @@
 
 {% if site.instagram %}
   <a href="https://www.instagram.com/{{ site.instagram }}" class="sidebar-social-icon instagram" target="_blank"></a>
-{% endif %}
-
-{% if site.zhihu %}
-  <a href="https://www.zhihu.com/people/{{ site.zhihu }}" class="sidebar-social-icon zhihu" target="_blank"></a>
 {% endif %}
 
 {% if site.stackoverflow %}
