@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Zookeeper vs Chubby
-category: 技术
+category: 一致性
 tags: [Zookeeper, Chubby, 论文, 分布式锁, 锁服务, 一致性]
 keywords: Zookeeper, Chubby, 论文, 分布式锁, 锁服务, 一致性
 ---

@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Why Raft never commits log entries from previous terms directly
-category: 技术
+category: 一致性
 tags: [一致性，Consistency, Raft, Quorum]
 keywords: 一致性, Consistency, Raft, Quorum
 ---

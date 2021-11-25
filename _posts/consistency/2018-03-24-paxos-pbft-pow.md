@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 从Paxos到区块链
-category: 技术
+category: 一致性
 tags: [Paxos, PBFT, 区块链，一致性，共识算法，工作量证明，Pow]
 keywords: Paxos, PBFT, 区块链，一致性，共识算法，工作量证明，Pow
 ---

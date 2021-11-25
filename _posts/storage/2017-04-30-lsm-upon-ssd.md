@@ -1,7 +1,7 @@
 ---
 layout: post
 title: LSM upon SSD
-category: 技术
+category: 存储
 tags: [lsm, leveldb, rocksdb, ssd]
 keywords: lsm, leveldb, rocksdb, ssd
 ---

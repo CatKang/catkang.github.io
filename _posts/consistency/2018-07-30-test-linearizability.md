@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 如何验证线性一致性
-category: 技术
+category: 一致性
 tags: [线性一致性, Linearizability, 分布式系统, WG, WGL, P-compositionality]
 keywords: 线性一致性, Linearizability, 分布式系统, WG, WGL, P-compositionality
 ---

@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 从Ceph看分布式系统故障检测
-category: 技术
+category: 存储
 tags: [Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心跳, 故障检测]
 keywords: Ceph, Ceph Monitor, Source, 源码, 分布式系统, 存活检测, 心跳, 故障检测
 ---

@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Raft和它的三个子问题
-category: 技术
+category: 一致性
 tags: [一致性，Consistency, Raft, Quorum]
 keywords: 一致性, Consistency, Raft, Quorum
 ---

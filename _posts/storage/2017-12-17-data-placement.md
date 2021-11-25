@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 浅谈分布式存储系统数据分布方法
-category: 技术
+category: 存储
 tags: [分布式存储，数据分布，数据定位，数据查找，lookup service，location service，hash table，consistent hash]
 keywords: 分布式存储，数据分布，数据定位，数据查找，lookup service，location service，hash table，consistent hash
 ---

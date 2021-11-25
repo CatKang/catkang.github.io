@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Redis Cluster 实现
-category: 技术
+category: 存储
 tags: [Redis, Redis Cluster, Source, 源码]
 keywords: Redis, Redis Cluster, Source, 源码
 ---

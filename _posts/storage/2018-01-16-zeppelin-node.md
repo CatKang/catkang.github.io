@@ -1,7 +1,7 @@
 ---
 layout: post
 title: Zeppelin不是飞艇之存储节点
-category: 技术
+category: 存储
 tags: [Zeppelin, KV存储，分布式存储]
 keywords: Zeppelin, KV存储，分布式存储储
 ---
