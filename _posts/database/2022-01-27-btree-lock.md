@@ -59,7 +59,7 @@ BTree在结构上有大量变种，本文聚焦于Bayer 1977年在《Concurrency
 
 ### Blink Tree
 仔细分析会发现，2PL和Tree Protocol中面临的最大问题其实在于：**节点的SMO时需要持有其父节点的写锁**。正因为如此才不得不在搜索过程提前对所有节点加写锁，或者当发现SMO后再进行升级，进退维谷。而之所以这样，是由于需要处理父节点中的对应key及指针，节点的分裂或合并，跟其父节点的修改是一个完整的过程，不允许任何其他事务看到这个过程的中间状态。针对这个问题，Blink Tree[7]巧妙的提出对所有节点增加右向指针，指向其Sibling节点，这是个非常漂亮的解决方案，因为他其实是提供了一种新的节点访问路径，让上述这种SMO的中间状态，变成一种合法的状态，从而避免了SMO过程持有父节点的写锁。
-![Blink Tree](http://catkang.github.io/assets/img/btree_lock/blink_tree.png)
+![Blink Tree](http://catkang.github.io/assets/img/btree_lock/blink_tree.jpg)
 
 
 
@@ -72,7 +72,7 @@ BTree在结构上有大量变种，本文聚焦于Bayer 1977年在《Concurrency
 
 # ARIES/KVL 峰回路转
 《ARIESIKVL: A Key-Value Locking Method for Concurrency Control of Multiaction Transactions Operating on B-Tree Indexes》[10]提出了一套完整的、高并发的实现算法，引导了B+Tree加锁这个领域今后几十年的研究和工业实现。ARIES/KVL首先**明确的区分了B+Tree的物理内容和逻辑内容**，逻辑内容就是存储在B+Tree上的那些数据记录，而B+Tree自己本身的结构属于物理内容，物理内容其实事务是不关心的，那么节点分裂、合并这些操作其实只是改变了B+Tree的物理内容而不是逻辑内容。因此，ARIES/KVL就将这些从Lock的保护中抽离出来，也就是Lock在Record上加锁，对物理结构则通过Latch来保护其在多线程下的安全。这里最本质的区别是Latch不需要在整个事务生命周期持有，而是只在临界区代码的前后，这其实也可以看作上面分层事务的一种实现。更多Lock和Latch的区别见下表：
-![Lock VS Latch](http://catkang.github.io/assets/img/btree_lock/lock_latch.png)
+![Lock VS Latch](http://catkang.github.io/assets/img/btree_lock/lock_latch.jpg)
 
 
 ### Latch保护物理结构
@@ -183,18 +183,36 @@ Hierarchical Locking其实有非常久的历史了，初衷是为了让大事务
 
 # 参考
 [1] [Bayer R, McCreight E M. Organization and Maintenance of Large Ordered Indices[J]. Acta Informatica, 1972, 1: 173-189.](http://www.cs.cmu.edu/~christos/courses/826.S10/FOILS-pdf/020_b-trees.pdf)
+
 [2] [Bayer R, Schkolnick M. Concurrency of operations on B-trees[J]. Acta informatica, 1977, 9(1): 1-21.](https://link.springer.com/article/10.1007/BF00263762)
+
 [3] [Bernstein P A, Hadzilacos V, Goodman N. Concurrency control and recovery in database systems[M]. Reading: Addison-wesley, 1987.](sigmod.org/publications/dblp/db/books/dbtext/bernstein87.html)
+
 [4] http://catkang.github.io/2018/09/19/concurrency-control.html
+
 [5] http://catkang.github.io/2018/08/31/isolation-level.html
+
 [6] [Garcia-Molina H, Ullman J D, Widom J. Database system implementation[M]. Upper Saddle River, NJ:: Prentice Hall, 2000.](https://www.csd.uoc.gr/~hy460/pdf/000.pdf)
+
 [7] [Lehman, Philip L., and S. Bing Yao. "Efficient locking for concurrent operations on B-trees." ACM Transactions on Database Systems (TODS) 6.4 (1981): 650-670.](https://dl.acm.org/doi/abs/10.1145/319628.319663)
+
 [8] [Weikum, Gerhard. "Principles and realization strategies of multilevel transaction management." ACM Transactions on Database Systems (TODS) 16.1 (1991): 132-180.](https://dl.acm.org/doi/abs/10.1145/103140.103145)
+
 [9] [Moss, J. Eliot B. "Open nested transactions: Semantics and support." Workshop on Memory Performance Issues. Vol. 28. 2006.](https://www.cs.utexas.edu/users/speedway/DaCapo/papers/wmpi-posters-1-Moss.pdf)
+
 [10] [Mohan C. ARIES/KVL: A key-value locking method for concurrency control of multiaction transactions operating on B-tree indexes[M]. IBM Thomas J. Watson Research Division, 1989.](https://www.vldb.org/conf/1990/P392.PDF)
+
 [11] [Mohan C, Levine F. ARIES/IM: an efficient and high concurrency index management method using write-ahead logging[J]. ACM Sigmod Record, 1992, 21(2): 371-380.](https://dl.acm.org/doi/abs/10.1145/141484.130338)
+
 [12] [Graefe G. A survey of B-tree locking techniques[J]. ACM Transactions on Database Systems (TODS), 2010, 35(3): 1-26.](https://dl.acm.org/doi/abs/10.1145/1806907.1806908)
+
 [13] [Lomet D B. Key range locking strategies for improved concurrency[M]. Digital Equipment Corporation, Cambridge Research Laboratory, 1993.](https://www.hpl.hp.com/techreports/Compaq-DEC/CRL-93-2.pdf)
+
 [14] [Graefe G. Hierarchical locking in B-tree indexes[J]. Datenbanksysteme in Business, Technologie und Web (BTW 2007)–12. Fachtagung des GI-Fachbereichs" Datenbanken und Informationssysteme"(DBIS), 2007.](https://dl.gi.de/bitstream/handle/20.500.12116/31818/18.pdf?sequence=1&isAllowed=y)
+
 [15] [Kimura H, Graefe G, Kuno H A. Efficient locking techniques for databases on modern hardware[C]//ADMS@ VLDB. 2012: 1-12.](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.259.348&rep=rep1&type=pdf)
+
 [16] [Graefe G, Lillibridge M, Kuno H, et al. Controlled lock violation[C]//Proceedings of the 2013 ACM SIGMOD International Conference on Management of Data. 2013: 85-96.](https://dl.acm.org/doi/abs/10.1145/2463676.2465325)
+
+
+
