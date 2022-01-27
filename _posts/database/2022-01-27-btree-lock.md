@@ -19,16 +19,15 @@ keywords: 并发控制，Concurrency Control，Database，B+Tree，Lock
 
 ### 1. B+Tree
 BTree在结构上有大量变种，本文聚焦于Bayer 1977年在《Concurrency of Operations on B-Trees》中提出的B+ Tree(或B* Tree)[2]：所有的数据信息都只存在于叶子节点，中间的非叶子节点只用来存储索引信息，这种选择进一步的增加了中间节点的索引效率，使得内存可以缓存尽可能多的索引信息，减少磁盘访问；除根节点以外，每个节点的键值对个数需要介于M/2和M之间，超过或者不足需要做分裂或者合并。
-![B+Tree](http://catkang.github.io/assets/img/btree_lock/btree.png)
-
+![B+Tree](http://catkang.github.io/assets/img/btree_lock/btree.jpg)
 
 如上图所示是树中的一部分，每个节点中包含一组有序的key，介于两个连续的有序key，key+1中间的是指向一个子树的指针，而这个子树中包含了所有取值在[key, key+1)的记录。
-![B+Tree Split](http://catkang.github.io/assets/img/btree_lock/btree_split.png)
+![B+Tree Split](http://catkang.github.io/assets/img/btree_lock/btree_split.jpg)
 当节点中的记录插入超过M/2时，需要触发Split，如上图将节点L中153之后的记录拆分到新节点中，同时需要修改在其父节点中插入一条新的Key 153以及对应的指针。分裂的过程可能继续向更上层传到。与之对应的是从树中删除数据时，可能触发节点合并，同样需要修改其父节点，同样可能向更上层传导。
 
 ### 2. Lock
 首先要明确，并发控制中的Lock跟我们在多线程编程中保护临界区的Lock不是一个东西，这个的区别会在后面讲到。事务在操作数据库时，会先对要访问的元素加对应的Lock，为了更高的并发， Lock通常有不同的Mode，如常见的读锁SL，写锁WL，不同Mode的锁相互直接的兼容性可以用兼容性表来表示：
-![Lock Mode](http://catkang.github.io/assets/img/btree_lock/lock_mode.png)
+![Lock Mode](http://catkang.github.io/assets/img/btree_lock/lock_mode.jpg)
 
 如多个事务可以同时持有SL，但已经有WL的元素不能再授予任何事务SL或WL。数据库通常会有一个调度模块来负责资源的加锁放锁，以及对应事务的等待或丢弃。所有的锁的持有和等待信息会记录在一张Lock Table中，调度模块结合当前的Lock Table中的状况和锁模式的兼容表来作出决策。如下图所示：事务T3已经持有了元素A的写锁WL，导致事务T1和T2无法获得读锁SL，从而在队列中等待，直到T3结束释放WL后，调度模块再依次唤醒等待的事务。
 《浅析数据库并发控制》[4] 中提到了，为了实现Serializable，通常会按照两阶段锁（2PL）的规则来进行加锁，也就是将事务的执行过程分为Growing阶段以及Shrinking阶段，Growing阶段可以对任何元素加锁但不能放锁，一旦有一次放锁就进入了Shrinking阶段，这个阶段就不能再对任何元素加锁了。通常的实现中，Shrinking阶段会在事务Commit时。可以用反证法方便的证明遵守2PL的加锁规则的并发事务满足Seralizable。
@@ -66,7 +65,7 @@ BTree在结构上有大量变种，本文聚焦于Bayer 1977年在《Concurrency
 
 # 对Record加Lock而不是Page
 上面讲到的传统的加锁策略，认为Btree的节点是加锁的最小单位，而所做的努力一直是在降低单个事务需要同时持有的锁的节点数，能不能更进一步提升Btree的并发能力呢？《Principles and realization strategies of multilevel transaction management》[8]对这个问题进行了深入的研究，如下图所示：
-![Multi Level](http://catkang.github.io/assets/img/btree_lock/multi_level.png)
+![Multi Level](http://catkang.github.io/assets/img/btree_lock/multi_level.jpg)
 以两个转账业务T1，T2为例，用户A和用户B分别转账给用户C一笔钱，在数据库中的执行可以分为三层，最高层L2从用户角度看，A和B的账户上的金额减少，C的账户金额增加；中间层L1在记录角度，代表A和B账户金额的Record x、Record y做了查询以及更新操作，而代表C账户金额的Record z做了更新操作；最下层L0站在Page的角度，Record x以及y都在Page p上，而Record z在Page q上，因此Page p以及Page q都被两个事务读写。按照上面讲到的对Page加Lock的做法，T2必须等T1执行完成并释放p，q两个Page上的锁。这种接近串行的并发度当然不是我们想要的。因此《Principles and realization strategies of multilevel transaction management》提出分层事务的解决方案，如果能在L1层，也就是**对Record而不是Page加锁**，就可以避免T1和T2在Page p Lock上的等待，如上图所示，T1和T2对Record x和Record y的操作其实是并发执行的。而L0层对Page的并发访问控制可以看做是上层事务的一个子事务或嵌套事务，其锁持有不需要持续整个最外层事务的生命周期。沿着这个思路，ARIES/KVL出现了。
 
 
