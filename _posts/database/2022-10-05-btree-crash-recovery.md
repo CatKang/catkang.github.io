@@ -108,12 +108,22 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 ## 参考：
 
 [1] [https://catkang.github.io/2019/01/16/crash-recovery.html](https://catkang.github.io/2019/01/16/crash-recovery.html)
+
 [2] [https://catkang.github.io/2022/01/27/btree-lock.html](https://catkang.github.io/2022/01/27/btree-lock.html)
+
 [3] [Liskov B, Scheifler R. Guardians and actions: Linguistic support for robust, distributed programs[J]. ACM Transactions on Programming Languages and Systems (TOPLAS), 1983, 5(3): 381-404.](https://dl.acm.org/doi/pdf/10.1145/582153.582155)
-[4] [Weikum G. Principles and realization strategies of multilevel transaction management[J]. ACM Transactions on Database Systems (TODS), 1991, 16(1): 132-180.](https://dl.acm.org/doi/abs/10.1145/103140.103145)
+
+[4] [Weikum G. Principles and realization strategies of multilevel transaction management[J]. ACM Transactions on Database Systems (TODS), 1991, 16(1): 132-180.]
+(https://dl.acm.org/doi/abs/10.1145/103140.103145)
+
 [5] [Mohan C, Haderle D, Lindsay B, et al. ARIES: A transaction recovery method supporting fine-granularity locking and partial rollbacks using write-ahead logging[J]. ACM Transactions on Database Systems (TODS), 1992, 17(1): 94-162.](https://cs.stanford.edu/people/chrismre/cs345/rl/aries.pdf)
+
 [6] [Mohan C, Levine F. ARIES/IM: an efficient and high concurrency index management method using write-ahead logging[J]. ACM Sigmod Record, 1992, 21(2): 371-380.](https://dl.acm.org/doi/abs/10.1145/141484.130338)
+
 [7] [Gray J, Reuter A. Transaction processing: concepts and techniques[M]. Elsevier, 1992.]()
+
 [8] [Graefe G. Write-optimized B-trees[C]//Proceedings of the Thirtieth international conference on Very large data bases-Volume 30. 2004: 672-683.](http://www.vldb.org/conf/2004/RS18P2.PDF)
+
 [9] [Graefe G. A survey of B-tree logging and recovery techniques[J]. ACM Transactions on Database Systems (TODS), 2012, 37(1): 1-35.](https://dl.acm.org/doi/abs/10.1145/2109196.2109197)
+
 
