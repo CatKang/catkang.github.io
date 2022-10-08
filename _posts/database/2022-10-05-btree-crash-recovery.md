@@ -7,12 +7,13 @@ keywords: 故障恢复，Crash Recovery，Database，B+Tree，Redo, Undo
 ---
 
 ## 前言
-故障恢复是数据库中重要的组成部分，为了在故障发生时，有足够的信息将数据库还原到正确的状态，DB需要在正常运行过程中就维护一些冗余的数据，同时还要保证数据库的高效运行，充分利用硬件特性，支持高效的数据组织及访问模式。数据库可能遇到的故障主要包括三种类型：Transaction Failure，包括用户主动的事务Abort，以及并发控制中遇到的如死锁错误时，数据库对所选事务的回滚；System Failure：包括各种原因的进程意外退出或机器重启；Media Failure：由于硬件异常导致的数据永久性丢失。当遇到这些故障时，数据库需要保证
+
+故障恢复是数据库中重要的组成部分，为了在故障发生时，有足够的信息将数据库还原到正确的状态，DB需要在正常运行过程中就维护一些冗余的数据，同时还要保证数据库的**高效运行，充分利用硬件特性，支持高效的数据组织及访问模式**。数据库可能遇到的故障主要包括三种类型：Transaction Failure，包括用户主动的事务Abort，以及并发控制中遇到的如死锁错误时，数据库对所选事务的回滚；System Failure：包括各种原因的进程意外退出或机器重启；Media Failure：由于硬件异常导致的数据永久性丢失。当遇到这些故障时，数据库需要保证
 
 - **Durability of Updates**：已经Commit的事务的修改，故障恢复后仍然存在；
 - **Failure Atomic**：失败事务的所有修改都不可见。
 
-也就是我们常说的ACID中的A和D。其中Media Failure需要从备份恢复，大多数方案中其实是当作一种特殊的System Failure来处理的，因此本文主要关注Transaction Failue以及System Failure，也就是对事务Abort，以及Crash Recovery的支持。
+也就是我们常说的ACID中的A和D。其中Media Failure需要从备份恢复，大多数方案中其实是当作一种特殊的System Failure来处理的，因此本文主要关注Transaction Failue以及System Failure，也就是对事务Abort，以及Crash Recovery的支持。本文将从日志的写入，事务的回滚，故障恢复过程几个方面介绍B+Tree数据库在故障恢复功能上，面对的问题及做出的选择权衡。
 
 #### 故障恢复机制
 
@@ -38,7 +39,7 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 
 ![2 Level Transaction](http://catkang.github.io/assets/img/btree_crash_recovery/layer_trx.png)
 
-该事务需要首先检查商品总的库存量 S，减去本次分配额之后修改库存量 S，之后按比例分配给A，B，C三个经销商，其中B，C两个经销商是第一次收到该商品的销售任务，因此需要先进行记录的插入，而经销商A只需要修改商品的库存量即可。如上图所示，逻辑内容也就是Record这一层的增删改查，最终会由物理层也就是Page上的修改实现。其中，经销商B在插入新的Record时，造成了Page的分裂，导致了当前Page s、新增Page t、以及其父节点Page o的改动。可以看出，这样一个事务的操作最终由上图虚线框标识的四个独立的子操作组成。自然的，数据库需要保证这些子操作本身是一个不可分割的原子操作。[《B+Tree数据库加锁历史》](https://catkang.github.io/2022/01/27/btree-lock.html)[2]中详细描述了如何用Latch来保证这些子操作在正常运行过程中的原子。但如果发生故障，如何保证恢复之后，这些子任务还能回到正确的状态呢？比如Insert C会不会存在一个非法的中间状态，也就是Btree结构的错误。
+该事务需要首先检查商品总的库存量 S，减去本次分配额之后修改库存量 S，之后按比例分配给A，B，C三个经销商，其中B，C两个经销商是第一次收到该商品的销售任务，因此需要先进行记录的插入，而经销商A只需要修改商品的库存量即可。如上图所示，逻辑层也就是Record这一层的增删改查，最终会由物理层也就是Page上的修改实现。如上图中Logical Level对库存总量记录S的Update，最终由Physical Level的Read加Write该记录所在的Page p实现。其中，经销商B在插入新的Record时，造成了Page的分裂，导致了当前Page s、新增Page t、以及其父节点Page o的改动。可以看出，这样一个事务的操作最终由上图虚线框标识的四个独立的子操作组成。自然的，数据库需要保证这些子操作本身是一个不可分割的原子操作。[《B+Tree数据库加锁历史》](https://catkang.github.io/2022/01/27/btree-lock.html)[2]中详细描述了如何用Latch来保证这些子操作在正常运行过程中的原子。但如果发生故障，如何保证恢复之后，这些子任务还能回到正确的状态呢？比如Insert C会不会存在一个非法的中间状态，也就是Btree结构的错误。
 
 我们发现，这个需求其实跟我们前面提到的数据库的故障恢复需要保证的，Durable以及Crash Atomic是很类似的，因此可用类似事务的方式来实现。由于这些子任务是由数据库内部，而不是用户发起和感知的，因此我们称这些事务为**System Transaction**，对应的，用户发起的上层事务我们称为**User Transaction**。进一步对比这两种事务可以看出他们的区别和联系：
 
@@ -46,11 +47,11 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 
 #### System Transaction
 
-显而易见的区别包括：是由数据库内部发起而不是用户发起；保护的是物理数据而不是用户可见的逻辑数据；修改的Page可以先保证在内存，从而避免持有Latch等待IO；调用开销很低等。这里我们还是聚焦到System Transaction自己的故障恢复上来。按之前提过的，这里会面临两个权衡选择：是要Redo还是Force刷脏限制，要Undo还是No-Steal刷脏限制。考虑到System Transaction修改的数据相对更少，持续时间更短，并且提交时间可控，No-Steal带来的修改长时间在内存维护的问题似乎无关紧要，因此，大多数的设计中**System Transaction采用Redo + No-Steal**的实现方案，也就是要求修改的Page在对应的System Transaction提交之后才能落盘，从而避免记录对System Transaction的Undo Log。这样就得到了一个两层事务的结构：上层User Transaction可以发起一个或多个System Transaction来修改对应一个或多个Page；System Transaction保证一组操作的原子和持久化；并在完成对应的修改后就可以立即提交；System Transaction提交后，其修改的物理结构就是可以被其他事务看到的了（但其怎么构造可见的逻辑内容就是并发控制的事情了，比如MVCC）；**User Transaction层，采用Redo + Undo的故障恢复策略；而System Transaction采用Redo + No-Steal策略**。
+显而易见的区别包括：是由数据库内部发起而不是用户发起；保护的是物理数据而不是用户可见的逻辑数据；修改的Page可以先保证在内存，从而避免持有Latch等待IO；调用开销很小等。这里我们还是聚焦到System Transaction自己的故障恢复上来。按之前提过的，这里会面临两个权衡选择：是要Redo还是Force刷脏限制，要Undo还是No-Steal刷脏限制。考虑到System Transaction修改的数据相对更少，持续时间更短，并且提交时间可控，No-Steal带来的修改长时间在内存维护的问题似乎无关紧要，因此，大多数的设计中**System Transaction采用Redo + No-Steal**的实现方案，也就是要求修改的Page在对应的System Transaction提交之后才能落盘，从而避免记录对System Transaction的Undo Log。这样就得到了一个两层事务的结构：上层User Transaction可以发起一个或多个System Transaction来修改对应一个或多个Page；System Transaction保证一组操作的原子和持久化；并在完成对应的修改后就可以立即提交；System Transaction提交后，其修改的物理结构就是可以被其他事务看到的了（但其怎么构造可见的逻辑内容就是并发控制的事情了，比如MVCC）；**User Transaction层，采用Redo + Undo的故障恢复策略；而System Transaction采用Redo + No-Steal策略**。
 
 ![System Transacton Log](http://catkang.github.io/assets/img/btree_crash_recovery/system_trx_log.png)
 
-如上图所示，还以上面库存分配的事务为例，User Transaction会对自己的每个操作记录Undo Log，并通过System Transaction完成需要的原子操作，这个过程中System Transaction会写对应Page的Redo Log，以及自己的Commit标记。最终当用户执行完所有的操作之后，发起事务的Commit，等待Transction Commit标记落盘后返回Commit成功。对这些Log的使用会在之后的Crash Recovery章节详细讲述。除此之外，在**刷脏约束**方面：
+如上图所示，还以上面库存分配的事务为例，User Transaction会对自己的每个操作记录Undo Log，比如Update总库存量S操作的Undo Log这里记为_Undo(Update S)_。之后通过System Transaction完成需要的原子操作，这个过程中System Transaction会写对应Page的Redo Log，以及自己的Commit标记，比如对Page p的修改的Redo Log在这里记为_Redo(p, off, val)_。最终当用户执行完所有的操作之后，发起事务的Commit，等待_Transaction Commit_标记落盘后返回Commit成功。对这些Log的使用会在之后的Crash Recovery章节详细讲述。除此之外，在**刷脏约束**方面：
 
 - 按照**Write Ahead Log**的要求，Page的落盘需要再对应Undo Log之后；
 - 因为System Transaction的**No-Steal**策略，Page的落盘又需要在对应的System Transaction的Commit标记之后。
@@ -59,7 +60,7 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 
 ## 事务回滚
 
-在上面的例子中，假设该事务在完成对经销商B的库存分发后，发生死锁或者用户放弃，需要回滚该事务。为了保证User Transactiom的Atomic，需要将该事务的所有修改还原，但在这种分层事务的实现中，System Transaction已经提交，其修改的Page已经可以被其他事务可见，甚至Record所在的Page都由于SMO发生了变化，不能简单的通过覆盖Page或Record的历史镜像来完成回滚。因此，就需要在User Transaction操作Record这一层，**对之前的修改做逆操作**，比如用Delete操作完成对Insert的回滚，用Increase操作完成对Decrease操作的回滚，这个逆操作同样需要发起新的System Transaction来完成。回滚的顺序跟当时执行的顺序相反，如下图所示，Rollback过程依次发起了Delete B，Update A及Upcate S操作：
+在上面的例子中，假设该事务在完成对经销商B的库存分发后，发生死锁或者用户放弃，需要回滚该事务。为了保证User Transactiom的Atomic，需要将该事务的所有修改还原，但在这种分层事务的实现中，System Transaction已经提交，其修改的Page已经可以被其他事务可见，甚至Record所在的Page都由于SMO发生了变化，不能简单的通过覆盖Page或Record的历史镜像来完成回滚。因此，就需要在User Transaction操作Record这一层，**对之前的修改做逆操作**，比如用Delete操作完成对Insert的回滚，用Increase操作完成对Decrease操作的回滚，这个逆操作同样需要发起新的System Transaction来完成。回滚的顺序跟当时执行的顺序相反，如下图所示，Rollback过程依次发起了Delete B，Update A及Upcate S操作，来逆序还原之前Insert B，Update A， Update S的写入：
 
 ![Rollback](http://catkang.github.io/assets/img/btree_crash_recovery/rollback.png)
 
@@ -75,8 +76,8 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 
 ## Crash Recovery
 
-当故障发生后，在进程重启时需要利用日志中的信息将DB还原到正确的状态，在上述分层事务的架构下，上层User Transaction正确运行的前提在于System Transaction能够保证其操作的原子及持久化。因此，Crash后自然会**先进行System Transaction的Crash Recovery**。按照上面的实现假设，System Transaction是没有Undo日志的，因为未提交的System Transaction是不会有任何数据落盘的，也就是No-steal策略保证了不需要Undo做System Transaction的回滚。那么，这时就只需要对所有已经提交的System Transaction的Redo Log做重放。对于Commit标记已经落盘的System Transaction，其对应的Redo Log都需要进行重放，而Commit标记没有落盘的，可以直接忽略，因为其所有对应的Page修改也一定没有落盘。
-之后，其实User Transaction的Durable就已经满足了，接下来需要的就是对Crash发生前，未提交的User Transaction操作通过Undo中的信息进行回滚，来保证Crash Atomic。这一步就跟我们上一节中讲到的事务Abort同样的过程了。还是以之前的库存分发事务为例，假设在Insert B操作之后，发生进程崩溃，这时Update S，Update A，Insert B几个操作已经执行成功，但整个事务还没有Commit，因此正确的Crash Recovery应该将物理数据还原到Crash之前，并对该事务的操作进行回滚，其整个过程如下图，在Redo Phase中，DB根据Log中的Redo信息，将所有能看到System Transaction Commit标记的Redo Log进行重放。之后再Undo Phase中逆序对所有该事务的Undo Log发起逆操作，比如通过Delete B来回退Insert B，这个过程同样会发起新的System Transaction，同样会写入自己的Redo Log。
+当故障发生后，在进程重启时需要利用日志中的信息将DB还原到正确的状态，在上述分层事务的架构下，上层User Transaction正确运行的前提在于System Transaction能够保证其操作的原子及持久化。因此，Crash后自然会**先进行System Transaction的Crash Recovery**。按照上面的实现假设，System Transaction是没有Undo日志的，因为未提交的System Transaction是不会有任何数据落盘的，也就是No-steal策略保证了不需要Undo来回滚System Transaction的修改。那么，这时就只需要对所有已经提交的System Transaction的Redo Log做重放。对于Commit标记已经落盘的System Transaction，其对应的Redo Log都需要进行重放，而Commit标记没有落盘的，可以直接忽略，因为其所有对应的Page修改也一定没有落盘。
+这时，其实User Transaction的Durable就已经满足了，接下来需要的就是对Crash发生前，未提交的User Transaction操作通过Undo中的信息进行回滚，来保证Crash Atomic。这一步就跟我们上一节中讲到的事务Abort同样的过程了。还是以之前的库存分发事务为例，假设在Insert B操作之后，发生进程崩溃，这时Update S，Update A，Insert B几个操作已经执行成功，但整个事务还没有Commit，因此正确的Crash Recovery应该将物理数据还原到Crash之前，并对该事务的操作进行回滚，其整个过程如下图，在Redo Phase中，数据库顺序根据Log中的Redo信息，将所有能看到System Transaction Commit标记的Redo Log进行重放。之后再Undo Phase中逆序对所有该事务的Undo Log发起逆操作，比如通过Delete B来回退Insert B，这个过程同样会发起新的System Transaction，同样会写入自己的Redo Log。
 
 ![Crash Recovery](http://catkang.github.io/assets/img/btree_crash_recovery/crash_recovery.png)
 
@@ -96,12 +97,15 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 ## 总结
 
 本文总结了B+Tree数据库针对故障恢复的设计和面对的问题：
+
 - 为了追求更高的事务并发度，B+Tree数据库区分了用户可见的逻辑内容和内部维护的物理结构，在并发控制上支持了Lock和Latch的分层，同时也在故障恢复上区分了**User Transaction和System Transaction**；
 - System Transaction由数据库内部发起，通常修改较少的一两个Page，提交时间可控，因此通常采用**Redo + No Steal**的策略，来避免写Undo Log；
 - 在User Transaction需要回滚时，由于之前的System Transaction可能已经提交，其改变的物理结构，如新分裂的Page已经被其他事物使用。因此需要在User Transaction层的**采取逆操作的方式进行回滚**，逆操作同样需要发起System Transaction。
 - User Transaction的回**滚不能回退物理结构的变化**，比如Page分裂，这一点正好可以被System Transaction保证。
 - 执行Crash Recovery时，需要**先做System Transaction的故障恢复**，由于其Redo + No Steal的实现，这里只需要重放其Redo Log。之后做User Transaction的Undo重放。
 - 由于分层实现，Redo Log是由System Transction产生的，天然需要Page Oriented，而Page内日志为了减少日志量和存储开销，通常采用Logical的实现，因此**Redo Log通常采用被称为Physiological Logging的方式**。对应的User Transaction层产生的Undo Log采用Logical Logging的方式。
+
+之后的文章中，会以InnoDB中的System Transaction：min-transaction及User Transaction的实现为例，来看看在工业实现中B+Tree数据库的故障恢复策略，其基本的实现思路都是符合本文讨论的。
 
 ---
 
@@ -125,5 +129,3 @@ B+Tree数据库将并发的粒度从Page变成Record来提高并发，其中最*
 [8] [Graefe G. Write-optimized B-trees[C]//Proceedings of the Thirtieth international conference on Very large data bases-Volume 30. 2004: 672-683.](http://www.vldb.org/conf/2004/RS18P2.PDF)
 
 [9] [Graefe G. A survey of B-tree logging and recovery techniques[J]. ACM Transactions on Database Systems (TODS), 2012, 37(1): 1-35.](https://dl.acm.org/doi/abs/10.1145/2109196.2109197)
-
-
