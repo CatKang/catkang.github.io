@@ -174,8 +174,7 @@ Buffer Pool中发生修改的Page被称为脏页，脏页最终是需要写回�
 Batch Flush由一个Page Coordinator线程和一组Page Cleaner线程负责，具体的个数跟Buffer Pool的Instance数绑定，所有的线程共用一个`page_cleaner_t`结构体来做一些统计和状态管理。通常情况下Page Coordinator会周期性被唤醒，通过`page_cleaner_flush_pages_recommendation`计算每一轮需要刷脏的Page数，然后将这个需求下发给所有的Page Cleaner线程，并等待所有的Page Cleaner刷脏完毕，Page Coordinator自己也会承担一份刷脏任务。而`page_cleaner_flush_pages_recommendation`判断刷脏量的时候，会综合考虑当前的脏页总量，Active Redo总量，以及磁盘IO的承载能，其中磁盘能力这个可以通过参数`innodb_io_capacity`以及`innodb_io_capacity_max`指定，下面是整理过的计算公式：
 
 ``` cpp
-  n_pages = (
-			  innodb_io_capacity * (ut_max(pct_for_dirty, pct_for_lsn)) / 100
+  n_pages = (innodb_io_capacity * (ut_max(pct_for_dirty, pct_for_lsn)) / 100
 	          + avg_page_rate
 	          + pages_for_lsn
 	         ) / 3;
@@ -249,14 +248,25 @@ enum latch_level_t {
 # 参考
 
 [1] [MySQL Source Code](https://github.com/mysql/mysql-server/tree/8.0)
+
 [2] [数据库故障恢复的前世今生](https://catkang.github.io/2019/01/16/crash-recovery.html)
-[4] [Effelsberg, Wolfgang, and Theo Haerder. "Principles of database buffer management." ACM Transactions on Database Systems (TODS) 9.4 (1984): 560-595.](https://www.researchgate.net/publication/220225054_Principles_of_Database_Buffer_Management)
+
+[3] [Effelsberg, Wolfgang, and Theo Haerder. "Principles of database buffer management." ACM Transactions on Database Systems (TODS) 9.4 (1984): 560-595.](https://www.researchgate.net/publication/220225054_Principles_of_Database_Buffer_Management)
+
 [4] [B+树数据库加锁历史](https://catkang.github.io/2022/01/27/btree-lock.html)
+
 [5] [B+树数据库故障恢复概述](https://catkang.github.io/2022/10/05/btree-crash-recovery.html)
+
 [6] [MySQL 8.0 Reference Manual 15.8.3.3 Making the Buffer Pool Scan Resistant](https://dev.mysql.com/doc/refman/8.0/en/innodb-performance-midpoint_insertion.html)
+
 [7] [MySQL 8.0 Reference Manual 15.5.1 Buffer Pool](https://dev.mysql.com/doc/refman/8.0/en/innodb-buffer-pool.html)
+
 [8] [庖丁解InnoDB之REDO LOG](https://catkang.github.io/2020/02/27/mysql-redo.html)
+
 [9] [数据库故障恢复机制的前世今生](https://catkang.github.io/2019/01/16/crash-recovery.html)
+
 [10] [Buffer pool 并发控制](https://zhuanlan.zhihu.com/p/129567245)
+
 [11] [Buffer Pool Performance Improvements in the InnoDB Storage Engine of MariaDB Server](https://archive.fosdem.org/2021/schedule/event/mariadb_buffer_pool_improvements/attachments/slides/4310/export/events/attachments/mariadb_buffer_pool_improvements/slides/4310/MariaDB_buffer_pool.pdf)
+
 [12] [PolarDB 数据库内核月报](http://mysql.taobao.org/monthly/2017/05/01/)
