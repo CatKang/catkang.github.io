@@ -3,7 +3,7 @@ layout: post
 title: 庖丁解InnoDB之Buffer Pool
 category: 庖丁解InnoDB
 tags: [Database, MySQL, InnoDB, Buffer Pool, PolarDB]
-keywords: MySQL, InnoDB, PolarDB, Buffer Pool
+keywords: MySQL, InnoDB, PolarDB, Buffer Pool, Database
 
 ---
 
