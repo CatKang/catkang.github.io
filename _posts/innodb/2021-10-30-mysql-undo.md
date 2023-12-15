@@ -229,8 +229,6 @@ Undo的清理工作是由专门的后台线程**srv_purge_coordinator_thread**�
 
 - Undo Tablespace的重建缩小，称为**Undo Tablespace Truncate**
 
-
-
 ### Undo Purge
 
 这一步主要针对的是TRX_UNDO_DEL_MARK_REC类型的Undo Record，用来真正的删除索引上被标记为Delete Mark的Record。worker线程会在**row_purge**函数中，循环处理coordinator分配来的每一个Undo Records，先通过**row_purge_parse_undo_rec**，依次从Undo Record中解析出type、table_id、rollptr、对应记录的主键信息以及update vector。之后，针对TRX_UNDO_DEL_MARK_REC类型，调用**row_purge_remove_sec_if_poss**将需要删除的记录从所有的二级索引上删除，调用**row_purge_remove_clust_if_poss**从主索引上删除。另外，TRX_UNDO_UPD_EXIST_REC类型的Undo虽然不涉及主索引的删除，但可能需要做二级索引的删除，也是在这里处理的。
