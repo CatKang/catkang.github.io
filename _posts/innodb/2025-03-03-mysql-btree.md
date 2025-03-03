@@ -221,16 +221,19 @@ InnoDB数据最终是存储在磁盘上的文件中的，通常会设置innodb_f
 
 [6] [B+树数据库故障恢复概述](https://catkang.github.io/2022/10/05/btree-crash-recovery.html)
 
-[7] [路在脚下, 从BTree 到Polar Index] [https://zhuanlan.zhihu.com/p/374000358]
+[7] [路在脚下, 从BTree 到Polar Index](https://zhuanlan.zhihu.com/p/374000358)
 
 [8] [MySQL Source Code](https://github.com/mysql/mysql-server/tree/8.0)
 
-[9] [POLARDB · B+树并发控制机制的前世今生] [https://zhuanlan.zhihu.com/p/50112182]
+[9] [POLARDB · B+树并发控制机制的前世今生](https://zhuanlan.zhihu.com/p/50112182)
 
-[10] [InnoDB btree latch 优化历程] (https://zhuanlan.zhihu.com/p/151397269)
+[10] [InnoDB btree latch 优化历程](https://zhuanlan.zhihu.com/p/151397269)
 
-[11] [Innodb 中的 Btree 实现 (一) · 引言 & insert 篇] (https://zhuanlan.zhihu.com/p/151397269)
+[11] [Innodb 中的 Btree 实现 (一) · 引言 & insert 篇](https://zhuanlan.zhihu.com/p/151397269)
 
-[12] [Innodb 中的 Btree 实现 (二) · select 篇] (https://zhuanlan.zhihu.com/p/611668432)
+[12] [Innodb 中的 Btree 实现 (二) · select 篇](https://zhuanlan.zhihu.com/p/611668432)
 
+[13] [innodb_diagrams](https://github.com/jeremycole/innodb_diagrams)
+
+[14] [Jeremy Cole Blog](https://blog.jcole.us/innodb/)
 
