@@ -1,7 +1,7 @@
 # Site settings
 title: CatKang的博客
 email: beijingwangkang@hotmail.com
-description: Out of three sounds he frame, not a fourth sound, but a star
+description: 
 baseurl: "" # the subpath of your site, e.g. /blog/
 url: http://catkang.github.io/
 rss_url: /pages/feed.xml
