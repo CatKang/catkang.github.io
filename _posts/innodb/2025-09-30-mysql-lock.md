@@ -133,7 +133,7 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 经过唯一性检查后，如果发现有重复，InnoDB会返回DB_DUPLICATE_KEY错误。如果没有发现冲突，会继续当前索引上的插入。这里需要注意的是对Delete Mark记录的处理，对于Delete Mark的记录，会在上述流程中加锁，但不会真正的被当做重复Key返回DB_DUPLICATE_KEY的，而是转换成一次对Delete Mark标记的Update，对于二级索引上只有Key相同的Delete Mark记录会当做没有重复继续Insert。我们这里重点还是关注其中的加锁过程，这里对Delete Mark的Update会调用**btr_cur_optimistic_update/btr_cur_pessimistic_update**完成[[13]](https://catkang.github.io/2025/03/03/mysql-btree.html)，这两个函数里面最终都会调用**lock_rec_lock**对要修改的记录加锁，这里无论是什么隔离级别都是加**Record Lock**（LOCK_REC_NOT_GAP）写锁。
 
-对于Insert操作，会调用**btr_cur_optimistic_insert/btr_cur_pessimistic_insert**完成，其中会统一调用**lock_rec_insert_check_and_lock**对要插入位点的后面一个Record尝试加**Gap Lock(LOCK_GAP) | LOCK_INSERT_INTENTION**锁。注意到这里相对于普通的**Gap Lock**(LOCK_GAP)多了一个**LOCK_INSERT_INTENTION**标记，并且只有在发生冲突的时候这个锁才会真正放到锁等待队列中。这其实是**Instant Lock优化**的一种实现[[5]]((https://catkang.github.io/2022/01/27/btree-lock.html))，其本质是利用Insert操作之后新的记录就会存在的特点，将事务生命周期的Gap Lock转换为Latch，也就是InnoDB中的Page mutex。假设事务T要插入记录M，其后继记录是Y，M所在的Page是q，那么这个加锁过程如下图伪代码显示：
+对于Insert操作，会调用**btr_cur_optimistic_insert/btr_cur_pessimistic_insert**完成，其中会统一调用**lock_rec_insert_check_and_lock**对要插入位点的后面一个Record尝试加**Gap Lock(LOCK_GAP) + LOCK_INSERT_INTENTION**锁。注意到这里相对于普通的**Gap Lock**(LOCK_GAP)多了一个**LOCK_INSERT_INTENTION**标记，并且只有在发生冲突的时候这个锁才会真正放到锁等待队列中。这其实是**Instant Lock优化**的一种实现[[5]]((https://catkang.github.io/2022/01/27/btree-lock.html))，其本质是利用Insert操作之后新的记录就会存在的特点，将事务生命周期的Gap Lock转换为Latch，也就是InnoDB中的Page mutex。假设事务T要插入记录M，其后继记录是Y，M所在的Page是q，那么这个加锁过程如下图伪代码显示：
 
 
 
@@ -178,7 +178,7 @@ T Commit and Unlock(M)
 
 大多数的加锁请求最终都会进入**lock_rec_lock**函数中，其中的加锁逻辑分为Fast和Slow两个路径，Fast路径处理一些简单的、不需要做冲突判断，但可能更常见的情况，比如当前Page上还没有锁，或者当前Page上只有一个lock_t结构，还是当前事务的，且锁类型跟本次需求相同，这种情况在遍历加锁的场景很常见，那么就可以直接设置这个lock_t上的Bitmap的对应位置即可。
 
-Fast路径不能处理的才会进入到Slow路径**lock_rec_lock_slow**，也是InnoDB核心的加锁逻辑，这里首先，通过**lock_rec_has_expl**过滤掉当前事务已经持有了更高级别的锁的情况；然后，通过**lock_rec_other_has_conflicting**判断要加的锁与当前已经存在的锁之间有没有冲突，如果没有冲突进入**lock_rec_add_to_queue**直接创建锁结构，注意这里同样会尝试寻找设置Bitmap的机会；如果有冲突需要等待，则进入**add_to_waitq**，这个函数在创建锁结构后，还需要通过**deadlock_check**函数来做死锁检测，关于死锁的内容会在后面介绍。Insert场景的加锁逻辑比较特殊，前面提到过，Insert会先用Gap Lock(LOCK_GAP) | LOCK_INSERT_INTENTION通过**lock_rec_other_has_conflicting**判断锁冲突，只有需要等待才进入add_to_waitq。如下图所示：
+Fast路径不能处理的才会进入到Slow路径**lock_rec_lock_slow**，也是InnoDB核心的加锁逻辑，这里首先，通过**lock_rec_has_expl**过滤掉当前事务已经持有了更高级别的锁的情况；然后，通过**lock_rec_other_has_conflicting**判断要加的锁与当前已经存在的锁之间有没有冲突，如果没有冲突进入**lock_rec_add_to_queue**直接创建锁结构，注意这里同样会尝试寻找设置Bitmap的机会；如果有冲突需要等待，则进入**add_to_waitq**，这个函数在创建锁结构后，还需要通过**deadlock_check**函数来做死锁检测，关于死锁的内容会在后面介绍。Insert场景的加锁逻辑比较特殊，前面提到过，Insert会先用Gap Lock(LOCK_GAP) + LOCK_INSERT_INTENTION通过**lock_rec_other_has_conflicting**判断锁冲突，只有需要等待才进入add_to_waitq。如下图所示：
 
 ![lock_function](http://catkang.github.io/assets/img/innodb_lock/lock_function.png)
 
