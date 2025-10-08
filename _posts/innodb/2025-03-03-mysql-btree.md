@@ -1,7 +1,7 @@
 ---
 layout: post
 title: 庖丁解InnoDB之B+Tree
-category: 数据库
+category: 庖丁解InnoDB
 tags: [Database，MySQL，InnoDB，B+Tree，Index，PolarDB]
 keywords: InnoDB，B+Tree，MySQL，Database，Index
 ---
