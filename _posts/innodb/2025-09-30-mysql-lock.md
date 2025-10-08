@@ -101,7 +101,7 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 先来看左边的t1表，按照我们上面介绍的加锁过程，由于where条件命中索引idx_k1，先通过index_read定位到idx_k1上第一条满足k1=10的记录（10, 2），加**Next Key Lock**（LOCK_ORDINARY），如图中的记录标红及指向前一个字段的红色箭头，并回表对对应的主键记录加**Record Lock**（LOCK_REC_NOT_GAP）；之后，general_fetch同样对（10, 5）加**Next Key Lock**（LOCK_ORDINARY），对主键记录加**Record Lock**（LOCK_REC_NOT_GAP）；最后，general_fetch扫描到（18, 4），由于已经不满足条件，且是等值查询，因此，根据上面讲到的第2种缩小锁范围优化，退化为**Gap Lock**（LOCK_GAP）。而对于右边的t2表，由于是唯一索引上的等值查询，根据第3种缩小范围优化，**Next Key Lock**（LOCK_ORDINARY）退化为**Record Lock**（LOCK_REC_NOT_GAP），并回表对主键项加**Record Lock**（LOCK_REC_NOT_GAP）。这个加锁的结果从performance_schema.data_locks中也可以看到，如下图所示：
 
-![image-20250929152148344](/Users/catkang/Library/Application Support/typora-user-images/image-20250929152148344.png)
+![lock_select_screen](http://catkang.github.io/assets/img/innodb_lock/lock_select_screen.png)
 
 对于Update和Delete操作，在第一步通过index_read和general_fetch这两个函数中的row_search_mvcc获取到一条满足条件的记录的同时，已经持有了必要的二级索引或主索引上合适的锁，之后再通过**row_upd**去真正做几路的Update或Delete的时候，可能还需要获取额外的锁，一个简单的例子是，经过主索引的查找之后，需要Update一个二级索引的列，那么这个时候在row_upd中最终会调用**lock_sec_rec_modify_check_and_lock**对要修改的二级索引上的记录也加上锁，不过这里如果不需要等待，会走隐式锁的逻辑，关于这部分我们会在后面介绍。
 
@@ -135,6 +135,8 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 对于Insert操作，会调用**btr_cur_optimistic_insert/btr_cur_pessimistic_insert**完成，其中会统一调用**lock_rec_insert_check_and_lock**对要插入位点的后面一个Record尝试加**Gap Lock(LOCK_GAP) | LOCK_INSERT_INTENTION**锁。注意到这里相对于普通的**Gap Lock**(LOCK_GAP)多了一个**LOCK_INSERT_INTENTION**标记，并且只有在发生冲突的时候这个锁才会真正放到锁等待队列中。这其实是**Instant Lock优化**的一种实现[[5]]((https://catkang.github.io/2022/01/27/btree-lock.html))，其本质是利用Insert操作之后新的记录就会存在的特点，将事务生命周期的Gap Lock转换为Latch，也就是InnoDB中的Page mutex。假设事务T要插入记录M，其后继记录是Y，M所在的Page是q，那么这个加锁过程如下图伪代码显示：
 
+
+
 ```c++
 Search（M，Y）and Hold Latch(q);
 
@@ -149,6 +151,8 @@ Unlatch(q);
 
 T Commit and Unlock(M)
 ```
+
+
 
 可以看出，（M，Y）之间的Gap锁被一次LOCK_INSERT_INTENTION Check代替，并没有真正的产生锁，这个过程和插入新的Record是在Page q的Latch保护下进行的，因此这个中间过程是不会有其他事务进来的，等Latch释放的时候，新的Record其实已经插入，这个（X，Y）的区间已经被划分成了，（X，M）以及（M，Y），新的事务只需要对自己关心的Gap加锁即可。除此之外，伪代码中的XLock(M)这一步，其实在InnoDB实现上也没有真实的动作，而是利用了新插入记录上维护了当前事务的事务ID这个特点，来做隐式的锁判断，对于隐式锁（ Implicit Lock）后面的章节会做更详细的介绍。通过隐式锁可以进一步减少Insert过程的加锁本身的开销。
 
