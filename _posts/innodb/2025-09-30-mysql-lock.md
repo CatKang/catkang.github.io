@@ -37,7 +37,7 @@ SELECT COUNT(c1) FROM t1 WHERE c1 = 'xyz' for Update/Share;
 因此，我们这里对InnoDB隔离级别的讨论，也需要区分是快照访问还是加锁访问。MySQL提供了ANSI中定义的所有四种隔离级别，但对异象的排除其实跟标准是有些差异的，这也引起了很多的误解， 我们这里来整理一下，表格中展示的是ANSI，MySQL InnoDB采用快照方式或者采用加锁方式的时候，在配置不同的隔离级别时，是否可能出现P1（Dirty Read）、P2（Non-Repeatable）、P3（Phantom）三种异象：
 
 |                  | ANSI       | MySQL InnoDB加锁访问 | MySQL InnoDB快照访问 |
-| ---------------- | ---------- | -------------------- | -------------------- |
+| ---------------- | :----------: | :--------------------: | :--------------------: |
 | Read Uncommitted | P1, P2, P3 | P3                   | P1, P2, P3           |
 | Read Committed   | P2, P3     | P3                   | P2，P3               |
 | Read Repeatable  | P3         |                      |                      |
