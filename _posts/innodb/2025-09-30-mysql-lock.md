@@ -2,7 +2,7 @@
 layout: post
 title: 庖丁解InnoDB之Lock
 category: 庖丁解InnoDB
-tags: [Database，MySQL，InnoDB，Lock，Isolation，PolarDB]
+tags: [Database, MySQL, InnoDB, Lock, Isolation, PolarDB]
 keywords: InnoDB，Lock，MySQL，Database，Isolation
 ---
 
@@ -15,7 +15,7 @@ keywords: InnoDB，Lock，MySQL，Database，Isolation
 
 数据库为了实现上述隔离级别的保证，就需要对事务的操作做冲突检测，对有冲突的事务延迟或丢弃，这就是数据库的**并发控制**机制。一方面，根据对冲突的乐观程度，可以分为，在操作甚至是事务开始之前就检测冲突的**基于Lock**的方式；在操作真正写数据的时候检测的**基于Timestamp**的方式；以及在事务Commit时才检测的**基于Validation**的方式三种。另一方面，根据是否采用多版本来避免读写之间的互相阻塞，分为单版本和多版本，也就是**MVCC**。关于这方面更多的讨论可以参考[浅析数据库并发控制机制[3]](https://catkang.github.io/2018/09/19/concurrency-control.html)。
 
-基于Lock的方式降低了冲突发生后回滚的代价，并且更符合数据库使用者的直观感觉，因此成为大多数数据库，尤其是单机数据库的选择。InnoDB采用的就是**Lock + MVCC**的实现方式，具体来说：对与写事务，会在修改记录之前对这一行记录加锁并持有，以此来避免冲突的发生；而对于只读事务，会默认采用MVCC的的方式，这种方式不需要加锁，而是在事务第一次读操作（RR）或者当前语句开始（RC）时，获取并持有一个当时实例全局的事务活跃状态，作为自己的ReadView，相当于对当时的事务状态打了一个Snapshot，后续访问某一行的时候，会根据这一行上面记录的事务ID，通过自己持有的ReadView来判断是否可见，如果不可见，再沿着记录上的Roll Ptr去Undo中查找自己可见的历史版本。这种读的方式我们也称之为**快照读（Snapshot Read）。**与之对应的，InnoDB还支持**加锁读（Lock Read）**的方式，当Select语句中使用了如<u>Select....for Update/Share</u>时，这时查询不再通过MVCC的方式，而是像写操作一样，先对需要访问的记录加锁，之后再读取记录内容，这种方式会跟写请求相互阻塞， 从而读到的也一定是该记录当前最新的值，因此也被称为当前读。
+基于Lock的方式降低了冲突发生后回滚的代价，并且更符合数据库使用者的直观感觉，因此成为大多数数据库，尤其是单机数据库的选择。InnoDB采用的就是**Lock + MVCC**的实现方式，具体来说：对于写事务，会在修改记录之前对这一行记录加锁并持有，以此来避免冲突的发生；而对于只读事务，会默认采用MVCC的方式，这种方式不需要加锁，而是在事务第一次读操作（RR）或者当前语句开始（RC）时，获取并持有一个当时实例全局的事务活跃状态，作为自己的ReadView，相当于对当时的事务状态打了一个Snapshot，后续访问某一行的时候，会根据这一行上面记录的事务ID，通过自己持有的ReadView来判断是否可见，如果不可见，再沿着记录上的Roll Ptr去Undo中查找自己可见的历史版本。这种读的方式我们也称之为**快照读（Snapshot Read）。**与之对应的，InnoDB还支持**加锁读（Lock Read）**的方式，当Select语句中使用了如<u>Select....for Update/Share</u>时，这时查询不再通过MVCC的方式，而是像写操作一样，先对需要访问的记录加锁，之后再读取记录内容，这种方式会跟写请求相互阻塞， 从而读到的也一定是该记录当前最新的值，因此也被称为当前读。
 
 ![lock_read](http://catkang.github.io/assets/img/innodb_lock/lock_read.png)
 
@@ -28,7 +28,7 @@ DELETE FROM t1 WHERE c1 = 'xyz';
 -- Deletes several rows recently committed by other transaction.
 ```
 
-这个例子展示的是一个事务，先通过正常的Select语句去查找满足条件c1='xyz'的记录，发现没有后，用相同的条件做删除操作。结果造成另一个事务刚刚Commit的满足c1='xyz'的记录被删除。这个现象就是因为前面的Selete语句默认走的是MVCC的方式，并没有对访问的记录加锁。官方文档也是不建议这样混用的，要实现前后Selete和Delete看到数据的一致，需要用上面的提到的**加锁读**的方式，也就是：
+这个例子展示的是一个事务，先通过正常的Select语句去查找满足条件c1='xyz'的记录，发现没有后，用相同的条件做删除操作。结果造成另一个事务刚刚Commit的满足c1='xyz'的记录被删除。这个现象就是因为前面的Selete语句默认走的是MVCC的方式，并没有对访问的记录加锁。官方文档也是不建议这样混用的，要实现前后Select和Delete看到数据的一致，需要用上面的提到的**加锁读**的方式，也就是：
 
 ```
 SELECT COUNT(c1) FROM t1 WHERE c1 = 'xyz' for Update/Share;
@@ -39,26 +39,26 @@ SELECT COUNT(c1) FROM t1 WHERE c1 = 'xyz' for Update/Share;
 |                  | ANSI       | MySQL InnoDB加锁访问 | MySQL InnoDB快照访问 |
 | ---------------- | :----------: | :--------------------: | :--------------------: |
 | Read Uncommitted | P1, P2, P3 | P3                   | P1, P2, P3           |
-| Read Committed   | P2, P3     | P3                   | P2，P3               |
+| Read Committed   | P2, P3     | P3                   | P2, P3               |
 | Read Repeatable  | P3         |                      |                      |
 | Serializable     |            |                      |                      |
 
 不同于ANSI每一个级别多排除一个异象，可以看到：
 
 - 当使用加锁访问，如写操作或者加锁读（Select...for Update/Share）时：在Read Uncommitted及Read Committed都会对Key加锁，并且这个锁是持续整个事务生命周期的，因此都不会有Dirty Read 和Non-Repeatable的问题；而在Read Repeatable及Serializable下，除了对Key加锁外，还需要对访问的Range加锁，同样也是持续整个事务生命周期，因此是没有Phantom问题的。
-- 当使用快照读，如正常的Select语句时：在Read Uncommitted下其实是不会持有ReadView判断可见性的，也就是存在Dirty Read，Non-Repeatable及Phantom的，在Read Committed下，每条查询都会重新获取一次Read View，并以之判断可见性，因此是可以排除Diry Read的；而在Read Repeatable隔离级别下，整个事务会在第一次读的时候获取一次ReadView，相当于之后的所有查询看到的都是这个时刻的快照，因此无论是针对单个Key的Non-Repeatable还是针对where条件的Phantom都是可以避免的，这一点跟标准不同，也是经常造成误解的地方；最后在Serializable下，其实是摒弃了MVCC的，正常的Select也隐式转换成加锁读，也可以摒弃三种异象。
+- 当使用快照读，如正常的Select语句时：在Read Uncommitted下其实是不会持有ReadView判断可见性的，也就是存在Dirty Read，Non-Repeatable及Phantom的，在Read Committed下，每条查询都会重新获取一次Read View，并以之判断可见性，因此是可以排除Dirty Read的；而在Read Repeatable隔离级别下，整个事务会在第一次读的时候获取一次ReadView，相当于之后的所有查询看到的都是这个时刻的快照，因此无论是针对单个Key的Non-Repeatable还是针对where条件的Phantom都是可以避免的，这一点跟标准不同，也是经常造成误解的地方；最后在Serializable下，其实是摒弃了MVCC的，正常的Select也隐式转换成加锁读，也可以摒弃三种异象。
 
 在实践中，由于Read Uncommitted太过宽松，而Seriablizable又没有MVCC，因此通常会在Read Committed及Read Repeatable两种隔离级别中选择。关于快照读的具体实现方式会在后面的文章中详细讨论，本文主要关注InnoDB的加锁访问的实现方式。
 
 # InnoDB加锁概述
 
-在进入到InnoDB的Lock实现细节之前，我们先从宏观上简要的介绍下InnoDB中的Lock的作用及维护方式。InnoDB遵循**2PL(Two-Phase Locking)**，也就是将事务生命周期分为两个阶段，增长阶段（Growing Phash）可以不断地对数据库对象加锁，但不能放锁，直到进入到缩减阶段（Shrinking Phase），这时就只能放锁不能再加锁了。InnoDB中的这个缩减阶段的划分就是事务Commit或Rollback。因此，InnoDB的事务一旦对某个对象加锁后，会在整个事务的生命周期全程持有这把锁。InnoDB中的记录锁有**读锁（LOCK_S）和写锁（LOCK_X）**两种模式，读锁之间不互斥，而写锁和读、写锁都互斥，修改操作通常会持有写锁，而只读操作会持有读锁。
+在进入到InnoDB的Lock实现细节之前，我们先从宏观上简要的介绍下InnoDB中的Lock的作用及维护方式。InnoDB遵循**2PL(Two-Phase Locking)**，也就是将事务生命周期分为两个阶段，增长阶段（Growing Phase）可以不断地对数据库对象加锁，但不能放锁，直到进入到缩减阶段（Shrinking Phase），这时就只能放锁不能再加锁了。InnoDB中的这个缩减阶段的划分就是事务Commit或Rollback。因此，InnoDB的事务一旦对某个对象加锁后，会在整个事务的生命周期全程持有这把锁。InnoDB中的记录锁有**读锁（LOCK_S）和写锁（LOCK_X）**两种模式，读锁之间不互斥，而写锁和读、写锁都互斥，修改操作通常会持有写锁，而只读操作会持有读锁。
 
 ![lock_table](http://catkang.github.io/assets/img/innodb_lock/lock_table.png)
 
 所有的锁的等待和持有信息会维护在一个全局的**Lock Table**中，如上图所示，并发访问的事务会通过对Lock Table查找，以及锁冲突的判断来实现对这些对象的正确访问。如图中所示，事务T3需要对数据库对象A做修改操作，所以申请A上的X Lock，查看Lock Table后发现A上已经有事务T1和T2同时持有S Lock。因此，T3在Lock Table中注册自己的Lock，并挂在A的Lock链表的末尾，标记为Waiting，之后T3挂起等待，直到前面的事务T1及T2提交或回滚后，释放Lock并唤醒T3继续运行。
 
-可以看出，对这个加锁的数据库对象，也就是上图中的A的选择，会成为影响并发性能的关键因素。B+Tree数据库在过去几十年，也经历了一系列的探索进步，从对整颗树加锁，到对多个或一个Page加锁，再到ARIES/KVL将逻辑内容和物理内容分离，实现对Record维度的加锁。InnoDB采用的就是这种**对B+Tree上的Record加Lock**的实现方式（更多参考[B+树数据库加锁历史[5]](https://catkang.github.io/2022/01/27/btree-lock.html)）。对Record全程加Lock可以很自然的实现对Dirtry Read以及Non-Repeatable Read的摒弃，但对于Repeatable Read隔离级别下对Phantom 异象的阻止就比较麻烦了，因为需要对查询的整个范围加锁，也就是需要对可能还不存在的记录进行加锁。针对这个问题，传统的实现方式是**谓词锁(Predicate Lock)**，也就是直接对查询条件加锁，这个是比较麻烦的，因为查询条件千变万化，还需要判定他们之间的互斥关系。幸运的是，在B+Tree上，记录之间已经天然维护了顺序关系，ARIES/KVL提出了**Key Range Locking**，也就是对Key加锁，来保护其旁边的区间范围。之后KRL认为同时对Key和Key之间的Range加锁的方式一定程度上限制了对Key和对Gap的访问并发，提出将二者进行分别加锁（更多参考[B+树数据库加锁历史[5]](https://catkang.github.io/2022/01/27/btree-lock.html)）。InnoDB采用的就是这种方式，分为三种锁类型：只对记录加锁的**Record Lock**（LOCK_REC_NOT_GAP），对当前记录之前的到前一个记录的区间加锁的**Gap Lock**（LOCK_GAP），以及同时对记录和其之前的区间加锁的**Next Key Lock**（LOCK_ORDINARY），他们的加锁对象范围如下图所示：
+可以看出，对这个加锁的数据库对象，也就是上图中的A的选择，会成为影响并发性能的关键因素。B+Tree数据库在过去几十年，也经历了一系列的探索进步，从对整颗树加锁，到对多个或一个Page加锁，再到ARIES/KVL将逻辑内容和物理内容分离，实现对Record维度的加锁。InnoDB采用的就是这种**对B+Tree上的Record加Lock**的实现方式（更多参考[B+树数据库加锁历史[5]](https://catkang.github.io/2022/01/27/btree-lock.html)）。对Record全程加Lock可以很自然的实现对Dirty Read以及Non-Repeatable Read的摒弃，但对于Repeatable Read隔离级别下对Phantom 异象的阻止就比较麻烦了，因为需要对查询的整个范围加锁，也就是需要对可能还不存在的记录进行加锁。针对这个问题，传统的实现方式是**谓词锁(Predicate Lock)**，也就是直接对查询条件加锁，这个是比较麻烦的，因为查询条件千变万化，还需要判定他们之间的互斥关系。幸运的是，在B+Tree上，记录之间已经天然维护了顺序关系，ARIES/KVL提出了**Key Range Locking**，也就是对Key加锁，来保护其旁边的区间范围。之后KRL认为同时对Key和Key之间的Range加锁的方式一定程度上限制了对Key和对Gap的访问并发，提出将二者进行分别加锁（更多参考[B+树数据库加锁历史[5]](https://catkang.github.io/2022/01/27/btree-lock.html)）。InnoDB采用的就是这种方式，分为三种锁类型：只对记录加锁的**Record Lock**（LOCK_REC_NOT_GAP），对当前记录之前的到前一个记录的区间加锁的**Gap Lock**（LOCK_GAP），以及同时对记录和其之前的区间加锁的**Next Key Lock**（LOCK_ORDINARY），他们的加锁对象范围如下图所示：
 
 ![lock_mode](http://catkang.github.io/assets/img/innodb_lock/lock_mode.png)
 
@@ -70,7 +70,7 @@ SELECT COUNT(c1) FROM t1 WHERE c1 = 'xyz' for Update/Share;
 
 InnoDB采用了前面所说的Ghost Locking的Delete实现，也就是对记录Delete的时候，并不会做真正的删除，而是仅仅在这条Record上设置Delete Mark标记，也就是将Delete操作转换成一次Update操作，依赖后台的Undo Purge过程清理。这样的好处是避免了Delete操作对其右侧区间锁的需要，又可以规避Rollback时Insert可能的空间不足问题。因此，Delete操作可以看做是一种特殊的只修改记录Delete Mark标记的Update操作，他们的加锁过程也是一致的。
 
-Selete、Update以及Delete语句，经过MySQL前面的SQL解析、优化、生成执行计划后，确定要使用的索引或者直接进行主键索引的全表扫描，之后就是通过一种迭代器的访问方式来遍历这个索引上的记录：首先，通过**ha_innobase::index_read**定位到满足where条件的第一条记录，加锁并访问、修改或者删除；然后，通过**ha_innobase::general_fetch**依次去遍历下一条满足条件的记录，同样加锁并访问、修改或者删除，直到遇到不满足条件的记录或结尾。这种SQL层和InnoDB层的交互模式如下如所示：
+Select、Update以及Delete语句，经过MySQL前面的SQL解析、优化、生成执行计划后，确定要使用的索引或者直接进行主键索引的全表扫描，之后就是通过一种迭代器的访问方式来遍历这个索引上的记录：首先，通过**ha_innobase::index_read**定位到满足where条件的第一条记录，加锁并访问、修改或者删除；然后，通过**ha_innobase::general_fetch**依次去遍历下一条满足条件的记录，同样加锁并访问、修改或者删除，直到遇到不满足条件的记录或结尾。这种SQL层和InnoDB层的交互模式如下如所示：
 
 ![locking_for_select](http://catkang.github.io/assets/img/innodb_lock/lock_for_select.png)
 
@@ -82,7 +82,7 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 **（1）合适的锁：**
 
-所谓合适的锁，首先是Lock Mode的选择，这个比较简单，对于写操作加写锁（X_LOCK），对于只读操作加读锁（S_LOCK）。其次是Lock Type的选择，在Read Committed及以下的隔离级别时，只对记录加**Record Lock**（LOCK_REC_NOT_GAP）。在Read Repeatable隔离级别下，对当前记录及其之前的区间加**Next Key Lock**（LOCK_ORDINARY）。这里说的合适的锁是最充分的，第3点钟会介绍其中可以优化的地方。
+所谓合适的锁，首先是Lock Mode的选择，这个比较简单，对于写操作加写锁（X_LOCK），对于只读操作加读锁（S_LOCK）。其次是Lock Type的选择，在Read Committed及以下的隔离级别时，只对记录加**Record Lock**（LOCK_REC_NOT_GAP）。在Read Repeatable隔离级别下，对当前记录及其之前的区间加**Next Key Lock**（LOCK_ORDINARY）。这里说的合适的锁是最充分的，第3点中会介绍其中可以优化的地方。
 
 **（2）所有扫描到的记录**
 
@@ -90,7 +90,7 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 **（3）尽量缩小加锁范围**
 
-按照上述的方式加锁并在事务生命周期持有这把锁，是足够保证对应隔离级别下对Non-Repeatable或者Phantom异象的排除的。在一些确定性的场景下，存在一些缩小加锁范围来降低所冲突，提升并发的空间，InnoDB的这种优化包括两种，一种是减少加锁对象，比如将**Next Key Lock**（LOCK_ORDINARY）变成**Record Lock**（LOCK_REC_NOT_GAP）或者**Gap Lock**(LOCK_GAP)，另一种是缩短持有锁的时间，比如一些可以提前放锁的场景。具体的优化如下：
+按照上述的方式加锁并在事务生命周期持有这把锁，是足够保证对应隔离级别下对Non-Repeatable或者Phantom异象的排除的。在一些确定性的场景下，存在一些缩小加锁范围来降低锁冲突，提升并发的空间，InnoDB的这种优化包括两种，一种是减少加锁对象，比如将**Next Key Lock**（LOCK_ORDINARY）变成**Record Lock**（LOCK_REC_NOT_GAP）或者**Gap Lock**(LOCK_GAP)，另一种是缩短持有锁的时间，比如一些可以提前放锁的场景。具体的优化如下：
 1. Read Committed及以下隔离级别时，对不满足条件的记录会在加到锁后提前放锁，包括上面提到的Delete Mark的记录，以及InnoDB返回MySQL后，MySQL判断不符合Where条件的记录。这是由于Read Committed隔离级别并不保证不出现幻读（Phantom Read），而这些记录又属于非用户可见的，可以看做是由于MySQL的底层实现带来的多余加锁，因此虽然看似违反了2PL但并不会造成错误的后果。但需要注意的是这些锁还是在加锁之后才又释放的，因此虽然窗口很小但还是会有锁等待甚至是死锁的可能。这也是一些极端情况下，在Read Committed隔离级别下访问不同Key的事务也有概率出现死锁的原因[[6]](https://dev.mysql.com/doc/refman/8.0/en/innodb-transaction-isolation-levels.html)。
 1. Read Repeatable及以上隔离级别时，对于等值查询，当遍历到第一个不满足查询条件的记录时，对这个记录加**Gap Lock**(LOCK_GAP)，而不是正常的**Next Key Lock**（LOCK_ORDINARY）来降低锁冲突。
 1. Read Repeatable及以上隔离级别时，对于等值查询，对于唯一索引上的非Delete Mark的记录，加**Record Lock**（LOCK_REC_NOT_GAP）而不是**Next Key Lock**（LOCK_ORDINARY）。这是因为在唯一索引上满足等值查询的记录最多只能有一条，所以只要对这个记录加记录锁就不存在后续同样满足条件的记录被插入的问题。但对Delete Mark记录是不可以的，比如二级索引上就可以存在重复的Delete Mark记录。
@@ -103,17 +103,17 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 ![lock_select_screen](http://catkang.github.io/assets/img/innodb_lock/lock_select_screen.png)
 
-对于Update和Delete操作，在第一步通过index_read和general_fetch这两个函数中的row_search_mvcc获取到一条满足条件的记录的同时，已经持有了必要的二级索引或主索引上合适的锁，之后再通过**row_upd**去真正做几路的Update或Delete的时候，可能还需要获取额外的锁，一个简单的例子是，经过主索引的查找之后，需要Update一个二级索引的列，那么这个时候在row_upd中最终会调用**lock_sec_rec_modify_check_and_lock**对要修改的二级索引上的记录也加上锁，不过这里如果不需要等待，会走隐式锁的逻辑，关于这部分我们会在后面介绍。
+对于Update和Delete操作，在第一步通过index_read和general_fetch这两个函数中的row_search_mvcc获取到一条满足条件的记录的同时，已经持有了必要的二级索引或主索引上合适的锁，之后再通过**row_upd**去真正做记录的Update或Delete的时候，可能还需要获取额外的锁，一个简单的例子是，经过主索引的查找之后，需要Update一个二级索引的列，那么这个时候在row_upd中最终会调用**lock_sec_rec_modify_check_and_lock**对要修改的二级索引上的记录也加上锁，不过这里如果不需要等待，会走隐式锁的逻辑，关于这部分我们会在后面介绍。
 
 
 
 # Insert加锁过程
 
-与上面所讲到Selete、Update、Delete不同，Insert操作的访问模式不需要根据Where条件的Search，而是直接定位目标记录在B+Tree上的位置，然后完成插入，在插入之前需要通过Lock的判断来避免出现Non-Repeatable或者Phantom。除此之外，索引的唯一性保证的要求会使得Insert过程变得稍微复杂一些，这种唯一性的要求，包括主索引（Primary Index）和唯一二级索引（Unique Index），简单的Insert语句在遇到唯一性冲突（Duplicate Key）的时候会直接报错返回，如果是Insert on duplicate key update，这个Insert操作就会转换为一次Update，而如果是Replace，就会转换为一次Delete加Insert的操作，如下图交互图所示：
+与上面所讲到Select、Update、Delete不同，Insert操作的访问模式不需要根据Where条件的Search，而是直接定位目标记录在B+Tree上的位置，然后完成插入，在插入之前需要通过Lock的判断来避免出现Non-Repeatable或者Phantom。除此之外，索引的唯一性保证的要求会使得Insert过程变得稍微复杂一些，这种唯一性的要求，包括主索引（Primary Index）和唯一二级索引（Unique Index），简单的Insert语句在遇到唯一性冲突（Duplicate Key）的时候会直接报错返回，如果是Insert on duplicate key update，这个Insert操作就会转换为一次Update，而如果是Replace，就会转换为一次Delete加Insert的操作，如下图交互图所示：
 
 ![lock_insert](http://catkang.github.io/assets/img/innodb_lock/lock_insert.png)
 
-为了InnoDB能够正确区分，MySQL会首先将操作的不同类型记录在trx->duplicates中，TRX_DUP_IGNORE表示是Insert ... on duplicate key update，TRX_DUP_REPLACE表示是Replace，都没有的话就是普通的Insert。之后通过**write_row**接口，并终会调用到**row_ins**函数，这个函数中会依次对主索引和所有二级索引完成插入。其中对主索引调用**row_ins_clust_index_entry_low**函数，对二级索引调用**row_ins_sec_index_entry_low**函数。这两个函数中的操作都可以分为**唯一性检查**和**插入**两个部分。
+为了InnoDB能够正确区分，MySQL会首先将操作的不同类型记录在trx->duplicates中，TRX_DUP_IGNORE表示是Insert ... on duplicate key update，TRX_DUP_REPLACE表示是Replace，都没有的话就是普通的Insert。之后通过**write_row**接口，并最终调用到**row_ins**函数，这个函数中会依次对主索引和所有二级索引完成插入。其中对主索引调用**row_ins_clust_index_entry_low**函数，对二级索引调用**row_ins_sec_index_entry_low**函数。这两个函数中的操作都可以分为**唯一性检查**和**插入**两个部分。
 
 **唯一性检查：**
 
@@ -121,7 +121,7 @@ index_read和general_fetch这两个函数的核心逻辑都实现在**row_search
 
 唯一二级索引的唯一性检查失败处理函数在**row_ins_scan_sec_index_for_duplicate**，从名字上看比主索引多了一个scan的概念，其实已经阐明了唯一二级索引相对于主索引最大的区别，就是Duplicate Key可能有多个，这是由于InnoDB对二级索引的实现导致的，二级索引上的记录包含了二级索引的字段和对应的主键字段，并且二级索引上的所有修改都会转换为一次Delete和Insert。因此，即使是唯一二级索引，同样的Key也可能存在多条主键不同的，标记为Delete Mark的记录，这些记录也是需要加正确的锁来保证隔离级别的。当发现插入点有重复的记录时，**row_ins_scan_sec_index_for_duplicate**中首先会以PAGE_CUR_GE模式重新搜索B+Tree，来找到有相同二级索引Key的第一条记录，然后向后依次遍历每一条Delete Mark的相同Key记录，直到遍历到非相同Key或者非Delete Mark的记录，对遇到的每一个记录通过**lock_sec_rec_read_check_and_lock**加合适的锁。
 
-普通的Insert语句加加读锁（LOCK_S），Duplicate Key Update或者Replace语句需要加写锁（LOCK_X）。然而，在锁类型的选择上却跟主索引非常不同，无论是什么隔离级别这里加的都是**Next Key Lock**（LOCK_ORDINARY）。 这一点非常特殊，意味着即使是RC隔离级别，事务依然有可能持有**Next Key Lock**（LOCK_ORDINARY）这种范围比较大的锁。为了保证每一个区间都安全，这种加锁甚至要加到第一个Key不相等的记录上，虽然在8.0.26之后的版本，最后这个不相等记录上的锁已经优化为了**Gap Lock**(LOCK_GAP)。如下图所示：
+普通的Insert语句加读锁（LOCK_S），Duplicate Key Update或者Replace语句需要加写锁（LOCK_X）。然而，在锁类型的选择上却跟主索引非常不同，无论是什么隔离级别这里加的都是**Next Key Lock**（LOCK_ORDINARY）。 这一点非常特殊，意味着即使是RC隔离级别，事务依然有可能持有**Next Key Lock**（LOCK_ORDINARY）这种范围比较大的锁。为了保证每一个区间都安全，这种加锁甚至要加到第一个Key不相等的记录上，虽然在8.0.26之后的版本，最后这个不相等记录上的锁已经优化为了**Gap Lock**(LOCK_GAP)。如下图所示：
 
 ![lock_insert_example](http://catkang.github.io/assets/img/innodb_lock/lock_insert_example.png)
 
@@ -214,7 +214,7 @@ Fast路径不能处理的才会进入到Slow路径**lock_rec_lock_slow**，也�
 
 ![lock_deadlock](http://catkang.github.io/assets/img/innodb_lock/lock_deadlock.png)
 
-如上图所示，是某一个时刻，红黄蓝三个事务持有的锁及他们的等关系，其中实线是事务持有锁的链表，而虚线表示需要等待的锁，可以看出，这一时刻他们三个已经出现了互相等待的环，三个事务都陷入了无限的等待中。所谓的死锁检测，就是要发现这些等锁事务之间可能存在的等待环，一旦存在这样的环，就需要选择事务回滚，来打破死锁等待。在8.0.18之前的版本中，这个事情是在需要加锁等待的**add_to_waitq**函数中，通过**deadlock_check**函数来处理的，其中会从新加入等待的这个事务出发，沿着事务所等待的Lock，以及Lock之前有冲突的事务，对这个事务及锁的等待图，做深度优先遍历（DFS），来发现可能的等待环。发现环后，会从当前新增Lock的这个事务，和等待这个新增Lock的事务，这两个事务中根据优先级、修改的记录行数以及持有的Lock数，选择一个影响较小的作为**victim**回滚掉。由于是在每次有新增Lock等待的时候，都发起全局视图的检测，这种检测方式一定是最及时、最准确的，但整个DFS遍历的过程中为了保持这个等待图稳定需要持有Lock系统的Mutex，在大压力并且有大量锁等待的时候，死锁检测本身就会成为瓶颈，当死锁检测的开销超过死锁本身的时候这种做法就得不偿失了。
+如上图所示，是某一个时刻，红黄蓝三个事务持有的锁及他们的等待关系，其中实线是事务持有锁的链表，而虚线表示需要等待的锁，可以看出，这一时刻他们三个已经出现了互相等待的环，三个事务都陷入了无限的等待中。所谓的死锁检测，就是要发现这些等锁事务之间可能存在的等待环，一旦存在这样的环，就需要选择事务回滚，来打破死锁等待。在8.0.18之前的版本中，这个事情是在需要加锁等待的**add_to_waitq**函数中，通过**deadlock_check**函数来处理的，其中会从新加入等待的这个事务出发，沿着事务所等待的Lock，以及Lock之前有冲突的事务，对这个事务及锁的等待图，做深度优先遍历（DFS），来发现可能的等待环。发现环后，会从当前新增Lock的这个事务，和等待这个新增Lock的事务，这两个事务中根据优先级、修改的记录行数以及持有的Lock数，选择一个影响较小的作为**victim**回滚掉。由于是在每次有新增Lock等待的时候，都发起全局视图的检测，这种检测方式一定是最及时、最准确的，但整个DFS遍历的过程中为了保持这个等待图稳定需要持有Lock系统的Mutex，在大压力并且有大量锁等待的时候，死锁检测本身就会成为瓶颈，当死锁检测的开销超过死锁本身的时候这种做法就得不偿失了。
 
 因此，在8.0.18之后的版本MySQL对这里做了大幅度的改造，总结起来包括三点：1）死锁检测过程从每次产生等待的用户线程add_to_waitq函数中，移到了后台线程中定时触发；2）从全程持有Lock系统的大锁到短暂持有，只用来获取一个当前等待的关系快照，之后基于这个快照做死锁检测，因此发现死锁后还需要重新获取Lock系统的大Mutex，并对候选事务做再次检查；3）检测的视角从事务->锁->事务的关系，简化为事务->事务的等待关系，这其中的信息丢失会导致一些场景下的死锁不能在第一时间发现。这种优化其实是一定程度上牺牲掉死锁检测的及时和准确，来换取整个系统开销的降低。从数据库整体角度来看，我认为这种权衡是划算的。无论如何，死锁检测本身会带来开销，可以通过**innodb_deadlock_detect**参数来关闭死锁检测，转而依赖**innodb_lock_wait_timeout**来结束锁等待。
 
@@ -224,7 +224,7 @@ Fast路径不能处理的才会进入到Slow路径**lock_rec_lock_slow**，也�
 
 ![lock_release](http://catkang.github.io/assets/img/innodb_lock/lock_release.png)
 
-上图是InnoDB中发生锁的释放及后续锁的唤醒的调用场景。InnoDB采用2PL的加锁策略，也就是说在1）在事务生命周期的结尾，提交或者回滚的阶段才去释放全部持有的Lock。这个动作发生在**lock_trx_release_locks**函数里，其中会遍历当前事务的**trx_locks**链，依次对每一个Lock调用**lock_rec_dequeue_from_page**，将其从trx_locks以及全局的**rec_hash**上摘除。除了正常的，由用户语句发起的Commit或者Rollback之外，2）一些异常情况导致的事务终止，也会触发事务回滚以及Lock的释放，比如线程被Kill、锁等待超时、被更高优先级的事务抢占，或者被死锁检测当做victim回滚。发生这些异常情况的时候，这些事务本身可能还在锁等待的状态中，因此在进入到事务回滚释放全部锁之前，首先需要将这个事务从等待状态唤醒，这个过程同样会调用**lock_rec_dequeue_from_page**对这个等待的Lock先进行释放，之后被唤醒的中断事务重新获得线程执行，并在row_mysql_handle_error函数中完成事务回滚，并在lock_trx_release_locks中释放剩余的全部Lock。
+上图是InnoDB中发生锁的释放及后续锁的唤醒的调用场景。InnoDB采用2PL的加锁策略，也就是说在1）在事务生命周期的结尾，提交或者回滚的阶段才去释放全部持有的Lock。这个动作发生在**lock_trx_release_locks**函数里，其中会遍历当前事务的**trx_locks**链，依次对每一个Lock调用**lock_rec_dequeue_from_page**，将其从trx_locks以及全局的**rec_hash**上摘除。除了正常的，由用户语句发起的Commit或者Rollback之外，2）一些异常情况导致的事务终止，也会触发事务回滚以及Lock的释放，比如线程被Kill、锁等待超时、被更高优先级的事务抢占，或者被死锁检测当做victim回滚。发生这些异常情况的时候，这些事务本身可能还在锁等待的状态中，因此在进入到事务回滚释放全部锁之前，首先需要将这个事务从等待状态唤醒，这个过程同样会调用**lock_rec_dequeue_from_page**对这个等待的Lock先进行释放，之后被唤醒的中断事务重新获得线程执行，并在row_mysql_handle_errors函数中完成事务回滚，并在lock_trx_release_locks中释放剩余的全部Lock。
 
 上面的两种释放锁的时机，其实还都是符合直观的2PL（two Phase Locking）的，也就是在事务最后的放锁阶段进行。但其实在Read Commited及以下的隔离级别时，在事务运行的中间，也是有可能有放锁发生的。上面介绍过，在Select、Update、Delete 加锁过程中，SQL层会循环地通过index_read和general_fetch接口，从InnoDB中查找满足条件的记录并完成加锁，这个过程中，无论是否有条件下推，InnoDB一定需要先加锁，然后才能安全的访问这个记录，之后才能确定这个记录是否满足条件。如果遇到不满足条件，或者是被标记Delete Mark的记录，为了优化，会在InnoDB层（Delete Mark或者有条件下推）或者MySQL SQL层，在获取到记录之后，再对这个记录进行放锁。这个行为乍一看是违背2PL的，但由于这些记录本身就是本次访问不可见的，也就不会破坏MySQL Read Committed级别对可重复读的保证。虽然对不满足条件记录的加锁再放锁的间隔时间很短，但这个对不满足条件的记录加锁的动作，还是有可能导致一些极端情况下，即使是访问完全不同的记录的两个事务，也有发生互相等待甚至是死锁的可能。这种提前放锁的动作最终都会在**row_unlock_for_mysql**函数中完成，不同于之前的两种情况，这里只是清除了Lock对象上的Bitmap对应位，从而完成了放锁，而并不会对Lock结构做析构，也就是这个被释放的Lock对象依然会存在于rec_hash哈希表及事务的trx_locks链表中。这么做也是因为当前事务的生命周期其实还并没有结束，后续很有可能还有更多的锁的申请，保留的这个Lock对象后续可以在Fast加锁路径中设置Bitmap后即可使用，避免了频繁的Lock对象的申请和析构。
 
@@ -262,11 +262,11 @@ Lock是一个逻辑层的概念，负责的是事务之间的访问数据库的�
 
 **Page Reorganize**：当Page发生记录重排列之后，Page上的记录批量的发生位置变化，对应的Lock也会在**lock_move_reorganize_page**移动到新的位置上去，这个过程通过清除旧的Lock的Bitmap，然后通过**lock_rec_add_to_queue**对新的位置加Lock实现。
 
-**Page分裂及合并**：类似的，当发生Page的分裂或合并的时候，会有批量的记录跨节点的移动，对应的Lock信息也会在**lock_move_rec_list_start**或**lock_move_rec_list_end**中对应的指向新的位置。除此之外，由于前面讲到的**Fence Key**的实现，Page上最右的哨兵记录Supermum会承担其后继节点第一个记录的Lock信息，因此发生Page分裂合并时，涉及到的Supermum记录上的Lock也需要做对应的处理，这里以常见的节点右分裂为例，如下图所示，首先，分裂点之后的Record移动到新的右节点的同时，上面的Lock也会通过**lock_move_rec_list_end**移动到新Page上去；之后在**lock_update_split_right**函数中调整两个Supermum记录上的Lock，包括将左节点的Supermum上的Lock移动到新的右节点的Supermum上，以及将右节点第一个Record上的保护Gap的Lock继承一份到左节点的Supermum上。如下图所示：
+**Page分裂及合并**：类似的，当发生Page的分裂或合并的时候，会有批量的记录跨节点的移动，对应的Lock信息也会在**lock_move_rec_list_start**或**lock_move_rec_list_end**中对应的指向新的位置。除此之外，由于前面讲到的**Fence Key**的实现，Page上最右的哨兵记录Supremum会承担其后继节点第一个记录的Lock信息，因此发生Page分裂合并时，涉及到的Supremum记录上的Lock也需要做对应的处理，这里以常见的节点右分裂为例，如下图所示，首先，分裂点之后的Record移动到新的右节点的同时，上面的Lock也会通过**lock_move_rec_list_end**移动到新Page上去；之后在**lock_update_split_right**函数中调整两个Supremum记录上的Lock，包括将左节点的Supremum上的Lock移动到新的右节点的Supremum上，以及将右节点第一个Record上的保护Gap的Lock继承一份到左节点的Supremum上。如下图所示：
 
 ![lock_physical_split](http://catkang.github.io/assets/img/innodb_lock/lock_physical_split.png)
 
-Page A分裂成Page A和Page B之后，一部分的记录从A转移到了B，他们上的Lock也跟着移动到新的Page No + Heap No上，之后，原Page上的Supermum上的Lock移动一份到Page B的Supermum上，并且将Page B上的第一个记录4上的**Next Key Lock**（LOCK_ORDINARY）继承一份成为Page A的Supermum的新的**Gap Lock**（LOCK_GAP）。
+Page A分裂成Page A和Page B之后，一部分的记录从A转移到了B，他们上的Lock也跟着移动到新的Page No + Heap No上，之后，原Page上的Supremum上的Lock移动一份到Page B的Supremum上，并且将Page B上的第一个记录4上的**Next Key Lock**（LOCK_ORDINARY）继承一份成为Page A的Supremum的新的**Gap Lock**（LOCK_GAP）。
 
 
 
