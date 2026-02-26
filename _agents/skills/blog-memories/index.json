@@ -1,0 +1,1029 @@
+{
+  "blog_url": "https://catkang.github.io",
+  "last_updated": "2026-02-26T17:30:50.041202",
+  "total": 40,
+  "categories": {
+    "庖丁解LevelDB": [
+      {
+        "title": "庖丁解LevelDB之版本控制",
+        "url": "https://catkang.github.io/2017/02/03/leveldb-version.html",
+        "date": "2017-02-03",
+        "category": "庖丁解LevelDB",
+        "tags": [
+          "leveldb",
+          "nosql，存储引擎，源码，source code，版本，Version，元信息"
+        ],
+        "summary": "版本控制或元信息管理，是LevelDB中比较重要的内容。本文首先介绍其在整个LevelDB中不可替代的作用；之后从代码结构引出其实现方式；最后由几个主要的功能点入手详细介绍元信息管理是如何提供不可或缺的支撑的。 **作用** 通过之前的博客，我们已经了解到了LevelDB整个的工作过程以及从Memtable，Log到SST文件的存储方式。那么问题来了，LevelDB如何能够知道每一层有哪些SST文..."
+      },
+      {
+        "title": "庖丁解LevelDB之概览",
+        "url": "https://catkang.github.io/2017/01/07/leveldb-summary.html",
+        "date": "2017-01-07",
+        "category": "庖丁解LevelDB",
+        "tags": [
+          "leveldb",
+          "nosql，存储引擎，源码，source code",
+          "介绍，概述"
+        ],
+        "summary": "LevelDB是Google传奇工程师Jeff Dean和Sanjay Ghemawat开源的KV存储引擎，无论从设计还是代码上都可以用精致优雅来形容，非常值得细细品味。接下来就将用几篇博客来由表及里的介绍LevelDB的设计和代码细节。本文将从设计思路、整体结构、读写流程、压缩流程几个方面来进行介绍，从而能够对LevelDB有一个整体的感知。 **设计思路** LevelDB的数据是存储在磁盘上..."
+      },
+      {
+        "title": "庖丁解LevelDB之数据存储",
+        "url": "https://catkang.github.io/2017/01/17/leveldb-data.html",
+        "date": "2017-01-17",
+        "category": "庖丁解LevelDB",
+        "tags": [
+          "leveldb",
+          "nosql，存储引擎，源码，source code",
+          "数据格式，数据存储，数据"
+        ],
+        "summary": "作为一个存储引擎，数据存储自然是LevelDB重中之重的需求。我们已经在庖丁解LevelDB之概览中介绍了Leveldb的使用流程，以及数据在Memtable，Immutable，SST文件之间的流动。本文就将详细的介绍LevelDB的数据存储方式，包括数据在不同介质中的存储方式，数据结构及设计思路。 **Memtable** Memtable对应Leveldb中的内存数据，LevelDB的写入操..."
+      },
+      {
+        "title": "庖丁解LevelDB之Iterator",
+        "url": "https://catkang.github.io/2017/02/12/leveldb-iterator.html",
+        "date": "2017-02-12",
+        "category": "庖丁解LevelDB",
+        "tags": [
+          "leveldb",
+          "nosql，存储引擎，源码，source code",
+          "迭代器，Iterator"
+        ],
+        "summary": "通过之前对LevelDB的整体流程，数据存储以及元信息管理的介绍，我们已经基本完整的了解了LevelDB。接下来两篇要介绍的内容并不是LevelDB的基本组成，却是让LevelDB更优雅高效的重点和体现，Iterator就是这样一种存在。 **作用** 正如庖丁解LevelDB之数据存储中介绍的，LevelDB各个组件用不同的格式进行数据存取。在LevelDB内部、外部、各个不同阶段又不可避免的需..."
+      }
+    ],
+    "一致性": [
+      {
+        "title": "Ceph Monitor的Paxos实现",
+        "url": "https://catkang.github.io/2017/11/21/ceph-paxos.html",
+        "date": "2017-11-21",
+        "category": "一致性",
+        "tags": [
+          "Ceph",
+          "Ceph Monitor",
+          "Paxos",
+          "源码",
+          "实现",
+          "源码介绍",
+          "分布式存储",
+          "元信息管理",
+          "一致性协议"
+        ],
+        "summary": "Ceph Monitor作为Ceph服务中的元信息管理角色，肩负着提供高可用的集群配置的维护及提供责任。Ceph选择了实现自己的Multi-Paxos版本来保证Monitor集群对外提供一致性的服务。Ceph Multi-Paxos将上层的元数据修改当成一次提交扩散到整个集群，Ceph中简单的用Paxos来指代Multi-Paxos，我们也沿用这一指代。本文将介绍Ceph Paxos的算法细节，讨..."
+      },
+      {
+        "title": "从Paxos到区块链",
+        "url": "https://catkang.github.io/2018/03/24/paxos-pbft-pow.html",
+        "date": "2018-03-24",
+        "category": "一致性",
+        "tags": [
+          "Paxos",
+          "PBFT",
+          "区块链，一致性，共识算法，工作量证明，Pow"
+        ],
+        "summary": "本文希望探讨从Paxos到PBFT（Practical Byzantine Fault Tolerance），再到区块链中共识算法Pow的关系和区别，并期望摸索其中一脉相承的思维脉络。 **问题** 首先需要明白，我们常说的一致性协议或共识算法所针对的问题，简单的说就是要保证： **即使发生网络或节点异常，整个集群依然能够像单机一样提供一致的服务，即在每次成功操作时都可以看到其之前的所有成功操作按..."
+      },
+      {
+        "title": "Zookeeper vs Chubby",
+        "url": "https://catkang.github.io/2017/10/10/zookeeper-vs-chubby.html",
+        "date": "2017-10-10",
+        "category": "一致性",
+        "tags": [
+          "Zookeeper",
+          "Chubby",
+          "论文",
+          "分布式锁",
+          "锁服务",
+          "一致性"
+        ],
+        "summary": "上一篇博客Chubby的锁服务中已经对Chubby的设计和实现做了比较详细的实现，但由于其闭源身份，工程中接触比较多的还是它的一个非常类似的开源实现Zookeeper。Zookeeper作为后起之秀，应该对Chubby有很多的借鉴，他们有众多的相似之处，比如都可以提供分布式锁的功能；都提供类似于UNIX文件系统的数据组织方式；都提供了事件通知机制Event或Watcher；都在普通节点的基础上提供..."
+      },
+      {
+        "title": "如何验证线性一致性",
+        "url": "https://catkang.github.io/2018/07/30/test-linearizability.html",
+        "date": "2018-07-30",
+        "category": "一致性",
+        "tags": [
+          "线性一致性",
+          "Linearizability",
+          "分布式系统",
+          "WG",
+          "WGL",
+          "P-compositionality"
+        ],
+        "summary": "线性一致性（Linearizability）是分布式系统中常见的一致性保证。那么如何验证系统是否正确地提供了线性一致性服务呢？本文希望从‘什么是线性一致性’，‘如何验证线性一致性’，问题复杂度，常见的通用算法，以及工程实现五个部分，直观、易懂地回答这个问题。 什么是线性一致性 MAURICE P. HERLIHY 和 JEANNETTE M. WING曾在“ Linearizability: A ..."
+      },
+      {
+        "title": "Why Raft never commits log entries from previous terms directly",
+        "url": "https://catkang.github.io/2017/11/30/raft-safty.html",
+        "date": "2017-11-30",
+        "category": "一致性",
+        "tags": [
+          "一致性，Consistency",
+          "Raft",
+          "Quorum"
+        ],
+        "summary": "熟悉Raft的读者知道，Raft在子问题Safty中，限制不能简单的通过收集大多数（Quorum）的方式提交之前term的entry。论文中也给出详细的例子说明违反这条限制可能会破坏算法的Machine Safety Property，即任何一个log位置只能有一个值被提交到状态机。如下图所示： 简单的说，c过程中如果S1简单的通过判断大多数节点在index为2的位置的AppendEntry成功来..."
+      },
+      {
+        "title": "Raft和它的三个子问题",
+        "url": "https://catkang.github.io/2017/06/30/raft-subproblem.html",
+        "date": "2017-06-30",
+        "category": "一致性",
+        "tags": [
+          "一致性，Consistency",
+          "Raft",
+          "Quorum"
+        ],
+        "summary": "这篇文章来源于一个经常有人困惑的问题：Quorum与Paxos，Raft等一致性协议有什么区别，这个问题的答案本身很简单：**一致性协议大多使用了Quorum机制，但仅仅有Quorum(R+W>N)机制是保证不了一致性的**。本文计划延伸这个问题，以Raft为例回答一个完善的一致性协议拥有包括Quorum在内的那些机制，试着说明这些机制的完备以及其中每一项的不可或缺。 **一致性** 要回答这个问..."
+      },
+      {
+        "title": "Chubby的锁服务",
+        "url": "https://catkang.github.io/2017/09/29/chubby.html",
+        "date": "2017-09-29",
+        "category": "一致性",
+        "tags": [
+          "Chubby",
+          "Lock",
+          "Distribute Lock",
+          "Consistency",
+          "分布式锁，锁服务",
+          "论文，介绍"
+        ],
+        "summary": "最近在完成Zeppelin的中心节点重构的过程中，反思了我们对分布式锁的实现和使用。因此重读了Chubby论文The Chubby lock service for loosely-coupled distributed systems，收益良多的同时也对其中的细节有了更感同身受的理解，论文中将众多的设计细节依次罗列，容易让读者产生眼花缭乱之感。本文希望能够更清晰的展现Chubby的设计哲学和实现..."
+      }
+    ],
+    "": [
+      {
+        "title": "Ceph Monitor实现",
+        "url": "https://catkang.github.io/2016/08/20/ceph-monitor-implementation.html",
+        "date": "2016-08-20",
+        "category": "",
+        "tags": [
+          "Ceph",
+          "Ceph Monitor",
+          "Paxos",
+          "源码",
+          "实现",
+          "源码介绍",
+          "分布式存储",
+          "元信息管理",
+          "一致性协议"
+        ],
+        "summary": "在之前的一篇博客Ceph Monitor and Paxos中介绍了Ceph Monitor利用改进的Paxos算法，以集群的形式对外提供元信息管理服务。本文讲分别从Ceph Monitor的架构，其初始化过程、选主过程、Recovery过程、读写过程、状态转换六个方面介绍Ceph Monitor的实现。本文假设读者已经了解Paxos算法的基本过程，了解Prepare、Promise、Commit..."
+      },
+      {
+        "title": "Ceilometer 源码学习 - Polling Agent",
+        "url": "https://catkang.github.io/2015/11/03/source-ceilometer-polling.html",
+        "date": "2015-11-03",
+        "category": "",
+        "tags": [
+          "Ceilometer",
+          "Source"
+        ],
+        "summary": "简介 Ceilometer是Openstack中用于数据采集的基础设施，包括多个组件：Central Agent，Compute Agent，Notification Agent，Collector等。其中Central Agent和Compute Agent分别运行在Controller和Compute机器上，通过定期调用其他服务的api来完成数据采集。由于二者的区别只是所负责的数据来源，这里我..."
+      },
+      {
+        "title": "Ceilometer 源码学习 - Notification Agent",
+        "url": "https://catkang.github.io/2015/11/16/source-ceilometer-notification.html",
+        "date": "2015-11-16",
+        "category": "",
+        "tags": [
+          "Ceilometer",
+          "Source",
+          "Notification"
+        ],
+        "summary": "简介 Ceilometer有两种数据收集方式，Ceilometer 源码学习 - Polling Agent中提到了主动调用api的Polling方式。显而易见的，这种方式会增加其他组件的负担。所以更优雅也是更推荐的方式是由Notification Agent监听消息队列并收集需要的数据。 这篇文章就将介绍Notification Agent的功能和实现。 需求导向 一句话来概括Notificat..."
+      },
+      {
+        "title": "Ceph Monitor and Paxos",
+        "url": "https://catkang.github.io/2016/07/17/ceph-monitor-and-paxos.html",
+        "date": "2016-07-17",
+        "category": "",
+        "tags": [
+          "Ceph",
+          "Ceph Monitor",
+          "Paxos",
+          "源码",
+          "实现",
+          "源码介绍",
+          "分布式存储",
+          "元信息管理",
+          "一致性协议"
+        ],
+        "summary": "Ceph Monitor集群作为Ceph中的元信息管理组件，基于改进的Paxos算法，对外提供一致性的元信息访问和更新服务。本文首先介绍Monitor在整个系统中的意义以及其反映出来的设计思路；之后更进一步介绍Monitor的任务及所维护数据；最后介绍其基于Paxos的实现细节和改进点。 **定位** RADOS毋庸置疑是Ceph架构中的重中之重，Ceph所提供的对象存储，块存储及文件存储都无一例..."
+      }
+    ],
+    "庖丁解InnoDB": [
+      {
+        "title": "庖丁解InnoDB之B+Tree",
+        "url": "https://catkang.github.io/2025/03/03/mysql-btree.html",
+        "date": "2025-03-03",
+        "category": "庖丁解InnoDB",
+        "tags": [
+          "Database，MySQL，InnoDB，B+Tree，Index，PolarDB"
+        ],
+        "summary": "InnoDB采用B+Tree来维护数据，处于非常核心的位置，可以说InnoDB中最重要的并发控制及故障恢复都是围绕着B+Tree来实现的。B+Tree本身是非常基础且成熟的数据结构，但在InnoDB这样一个成熟的工业产品里，面对的是复杂的用户场景，多样的需求，高性能高稳定的要求，以及长达几十年的代码积累，除此之外，InnoDB中的B+Tree在实现上并没有一个清晰的接口分层，这些都让这部分的代码显..."
+      },
+      {
+        "title": "庖丁解InnoDB之Buffer Pool",
+        "url": "https://catkang.github.io/2023/08/08/mysql-buffer-pool.html",
+        "date": "2023-08-08",
+        "category": "庖丁解InnoDB",
+        "tags": [
+          "Database",
+          "MySQL",
+          "InnoDB",
+          "Buffer Pool",
+          "PolarDB"
+        ],
+        "summary": "Buffer Pool是InnoDB中非常重要的组成部分，也是数据库用户最关心的组件之一。Buffer Pool的基本功能并不复杂，设计实现也比较清晰，但作为一个有几十年历史的工业级数据库产品，不可避免的在代码上融合了越来越多的功能，以及很多细节的优化，从而显得有些臃肿和晦涩。本文希望聚焦在Buffer Pool的本职功能上，从其提供的接口、内存组织方式、Page获取、刷脏等方面进行介绍，其中会穿..."
+      },
+      {
+        "title": "庖丁解InnoDB之Undo LOG",
+        "url": "https://catkang.github.io/2021/10/30/mysql-undo.html",
+        "date": "2021-10-30",
+        "category": "庖丁解InnoDB",
+        "tags": [
+          "Database",
+          "MySQL",
+          "InnoDB",
+          "UNDO"
+        ],
+        "summary": "Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个最主要的部分，并发控制（Concurrency Control）和故障恢复（Crash Recovery），InnoDB中Undo Log的实现亦日志亦数据。本文将从其作用、设计思路、记录内容、组织结构，以及各种功能实现等方面，整体介绍InnoDB中的Undo Log，文章会深入一定的代码实现，但在细节上还是希望用抽象..."
+      },
+      {
+        "title": "庖丁解InnoDB之REDO LOG",
+        "url": "https://catkang.github.io/2020/02/27/mysql-redo.html",
+        "date": "2020-02-27",
+        "category": "庖丁解InnoDB",
+        "tags": [
+          "Database",
+          "MySQL",
+          "InnoDB",
+          "REDO"
+        ],
+        "summary": "数据库故障恢复机制的前世今生中介绍了，磁盘数据库为了在保证数据库的原子性(A, Atomic) 和持久性(D, Durability)的同时，还能以灵活的刷盘策略来充分利用磁盘顺序写的性能，会记录REDO和UNDO日志，即**ARIES**方法。本文将重点介绍REDO LOG的作用，记录的内容，组织结构，写入方式等内容，希望读者能够更全面准确的理解REDO LOG在InnoDB中的位置。本文基于M..."
+      },
+      {
+        "title": "庖丁解InnoDB之Lock",
+        "url": "https://catkang.github.io/2025/09/30/mysql-lock.html",
+        "date": "2025-09-30",
+        "category": "庖丁解InnoDB",
+        "tags": [
+          "Database",
+          "MySQL",
+          "InnoDB",
+          "Lock",
+          "Isolation",
+          "PolarDB"
+        ],
+        "summary": "隔离性（Isolation）是关系型数据库非常重要的特性。顾名思义，隔离性是要对并发运行在数据库上的事务做隔离，其本质是在数据库并发性能和事务正确性之间做权衡，为此数据库通常会提供不同程度的隔离级别供用户选择。而并发控制，就是保证不同隔离级别正确性的内部实现机制。Lock是现代数据库，尤其是单机数据库中最常见的并发控制手段，InnoDB采用的就是基于Lock的并发控制。本文将介绍InnoDB所支持..."
+      }
+    ],
+    "存储": [
+      {
+        "title": "Zeppelin不是飞艇之概述",
+        "url": "https://catkang.github.io/2018/01/07/zeppelin-overview.html",
+        "date": "2018-01-07",
+        "category": "存储",
+        "tags": [
+          "Zeppelin",
+          "KV存储，分布式存储"
+        ],
+        "summary": "过去的一年多的时间中，大部分的工作都围绕着Zeppelin这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。Zeppelin是一..."
+      },
+      {
+        "title": "Zeppelin不是飞艇之存储节点",
+        "url": "https://catkang.github.io/2018/01/16/zeppelin-node.html",
+        "date": "2018-01-16",
+        "category": "存储",
+        "tags": [
+          "Zeppelin",
+          "KV存储，分布式存储"
+        ],
+        "summary": "通过上一篇Zeppelin不是飞艇之概述的介绍，相信读者已经对Zeppelin有了大致的了解，这篇就将详细介绍其中的存储节点集群（Node Server）。存储节点负责最终的数据存储，每个Node Server会负责多个分片副本，每个分片副本对应一个DB和一个Binlog。同一分片的不同副本之间会建立主从关系，进行数据同步，并在主节点异常时自动切换。本文将从请求处理、线程模型、元信息变化、副本同步..."
+      },
+      {
+        "title": "Zeppelin不是飞艇之元信息节点",
+        "url": "https://catkang.github.io/2018/01/19/zeppelin-meta.html",
+        "date": "2018-01-19",
+        "category": "存储",
+        "tags": [
+          "Zeppelin",
+          "KV存储，分布式存储"
+        ],
+        "summary": "从Zeppelin不是飞艇之概述的介绍中我们知道元信息节点Meta以集群的形式向整个Zeppelin提供元信息的维护和提供服务。可以说Meta集群是Zeppelin的大脑，是所有元信息变化的发起者。每个Meta节点包含一个Floyd实例，从而也是Floyd的一个节点，Meta集群依赖Floyd提供一致性的内容读写。本文将从角色、线程模型、数据结构、选主与分布式锁、集群扩容缩容及成员变化几个方面详细..."
+      },
+      {
+        "title": "从配置文件到分布式配置管理QConf",
+        "url": "https://catkang.github.io/2015/06/23/qconf.html",
+        "date": "2015-06-23",
+        "category": "存储",
+        "tags": [
+          "QConf",
+          "配置管理"
+        ],
+        "summary": "QConf是奇虎360广泛使用的配置管理服务，现已开源： QConf Source Code。欢迎大家关注使用。 本文从设计初衷，架构实现，使用情况及相关产品比较四个方面进行介绍。 设计初衷 在分布式环境中，出于负载、容错等种种原因，几乎所有的服务都需要在不同的机器节点上部署多个实例。同时，业务项目中总少不了各种类型的配置文件。这种情况下，有时仅仅是一个配置内容的修改，便需要重新进行代码提交svn..."
+      },
+      {
+        "title": "Redis Cluster 实现",
+        "url": "https://catkang.github.io/2016/05/08/redis-cluster-source.html",
+        "date": "2016-05-08",
+        "category": "存储",
+        "tags": [
+          "Redis",
+          "Redis Cluster",
+          "Source",
+          "源码"
+        ],
+        "summary": "本文将从设计思路，功能实现，源码几个方面介绍Redis Cluster。假设读者已经了解Redis Cluster的使用方式。 **简介** Redis Cluster作为Redis的分布式实现，主要做了两个方面的事情： **1，数据分片** - Redis Cluster将数据按key哈希到16384个slot上 - Cluster中的不同节点负责一部分slot **2，故障恢复** - Clu..."
+      },
+      {
+        "title": "从Ceph看分布式系统故障检测",
+        "url": "https://catkang.github.io/2016/09/23/ceph-failure-detection.html",
+        "date": "2016-09-23",
+        "category": "存储",
+        "tags": [
+          "Ceph",
+          "Ceph Monitor",
+          "Source",
+          "源码",
+          "分布式系统",
+          "存活检测",
+          "心跳",
+          "故障检测"
+        ],
+        "summary": "节点的故障检测是分布式系统无法回避的问题，集群需要感知节点的存活，并作出适当的调整。通常我们采用心跳的方式来进行故障检测，并认为能正常与外界保持心跳的节点便能够正常提供服务。一个好的故障检测策略应该能够做到： - **及时**：节点发生异常如宕机或网络中断时，集群可以在可接受的时间范围内感知； - **适当的压力**：包括对节点的压力，和对网络的压力； - **容忍网络抖动** - **扩散机制*..."
+      },
+      {
+        "title": "浅谈分布式存储系统数据分布方法",
+        "url": "https://catkang.github.io/2017/12/17/data-placement.html",
+        "date": "2017-12-17",
+        "category": "存储",
+        "tags": [
+          "分布式存储，数据分布，数据定位，数据查找，lookup service，location service，hash table，consistent hash"
+        ],
+        "summary": "分布式存储系统中面临着的首要问题就是如何将大量的数据分布在不同的存储节点上，无论上层接口是KV存储、对象存储、块存储、亦或是列存储，在这个问题上大体是一致的。本文将介绍在分布式存储系统中做数据分布目标及可选的方案，并试着总结他们之间的关系及权衡。 **指标** 这里假设目标数据是以key标识的数据块或对象，在一个包含多个存储节点的集群中，数据分布算法需要为每一个给定的key指定一个或多个对应的存储..."
+      },
+      {
+        "title": "LSM upon SSD",
+        "url": "https://catkang.github.io/2017/04/30/lsm-upon-ssd.html",
+        "date": "2017-04-30",
+        "category": "存储",
+        "tags": [
+          "lsm",
+          "leveldb",
+          "rocksdb",
+          "ssd"
+        ],
+        "summary": "近年来，以LevelDB和Rocksdb为代表的LSM（Log-Structured Merge-Tree）存储引擎凭借其优异的写性能及不俗的读性能成为众多分布式组件的存储基石，包括我们近两年开发的类Redis大容量存储Pika和分布式KV存储Zeppelin，在享受LSM的高效的同时也开始逐渐体会到它的不足，比如它在大Value场景下的差强人意以及对磁盘的反复擦写。正如之前的博客庖丁解Level..."
+      },
+      {
+        "title": "对象存储面面观之Haystack",
+        "url": "https://catkang.github.io/2017/03/20/haystack.html",
+        "date": "2017-03-20",
+        "category": "存储",
+        "tags": [
+          "haystack",
+          "object store，对象存储，论文"
+        ],
+        "summary": "英文中有句谚语叫做“Find a needle in haystack”，对应中文的“大海捞针”。Facebook将自己的图片存储系统称为Haystack，也非常形象的暗示了其所面对的挑战和目标场景。 **场景与目标** 正如上面的谚语所暗示的那样，Haystack面对的是海量的社交图片，具有特殊的数据场景： - 海量； - 一次写，多次读，从不修改，很少删除； - 长尾效应：社交图片特有的，会有..."
+      },
+      {
+        "title": "Dynamo论文介绍",
+        "url": "https://catkang.github.io/2016/05/27/dynamo.html",
+        "date": "2016-05-27",
+        "category": "存储",
+        "tags": [
+          "Dynamo",
+          "论文",
+          "NOSQL",
+          "存储"
+        ],
+        "summary": "Dynamo是Amazon开发的分布式存储系统，本文是阅读Dynamo论文后的总结：Dynamo: Amazon’s Highly Available Key-value Store。将从背景、定位、简介、问题及解决方案几个方面介绍Dynamo的整体设计思路。 **背景** Dynamo是在Amazon所处的应用环境中因运而生的，其需要面对的问题和场景在互联网的业务中也是类似的： - 大多数场景并..."
+      }
+    ],
+    "数据库": [
+      {
+        "title": "浅析数据库并发控制机制",
+        "url": "https://catkang.github.io/2018/09/19/concurrency-control.html",
+        "date": "2018-09-19",
+        "category": "数据库",
+        "tags": [
+          "Concurrency Control，Transaction",
+          "Database"
+        ],
+        "summary": "数据库事务隔离发展标准一文中，从标准制定的角度介绍了数据库的隔离级别，介绍了Read Uncommitted、Read Committed、Repeatable Read、Serializable等隔离级别的定义。本文就来看看究竟有哪些常见的实现事务隔离的机制，称之为并发控制（Concurrency Control）。 原理 所谓**并发控制，就是保证并发执行的事务在某一隔离级别上的正确执行的机制..."
+      },
+      {
+        "title": "聊聊数据库跨地域",
+        "url": "https://catkang.github.io/2026/02/13/gdn.html",
+        "date": "2026-02-13",
+        "category": "数据库",
+        "tags": [
+          "Database",
+          "GDN",
+          "跨地域",
+          "分布式数据库",
+          "Spanner",
+          "CockroachDB",
+          "Aurora DSQL",
+          "全球数据库"
+        ],
+        "summary": "需求 随着国际业务的普及，以及对服务实时性和数据安全性的要求日益增强，越来越多的业务需要跨地域提供服务，作为其数据基座的数据库，也遇到了越来越多的跨地域部署的需求。在PolarDB MySQL GDN(Global Database Network)[[1]](https://help.aliyun.com/zh/polardb/polardb-for-mysql/user-guide/globa..."
+      },
+      {
+        "title": "PolarDB闪回查询，让历史随时可见",
+        "url": "https://catkang.github.io/2021/11/25/backquery.html",
+        "date": "2021-11-25",
+        "category": "数据库",
+        "tags": [
+          "Database",
+          "MySQL",
+          "InnoDB",
+          "PolarDB"
+        ],
+        "summary": "通过数据库我们我们可以方便的查询当前的数据。但当我们需要查询之前几秒，几个小时甚至几天的数据时，就变的非常复杂。比如需要从某个备份开始经过漫长的redo回放，得到一个对应历史时间的新实例，然后在这个新实例上进行查询。如果需要查询多个不同时间点的数据，那就更复杂了。有没有办法能够让数据库像当前查询一样实时的查询任意时间点的数据呢？ PolarDB Flashback Query使用 PolarDB最..."
+      },
+      {
+        "title": "NewSQL数据库概述",
+        "url": "https://catkang.github.io/2020/12/01/newsql.html",
+        "date": "2020-12-01",
+        "category": "数据库",
+        "tags": [
+          "Database",
+          "NewSQL"
+        ],
+        "summary": "NewSQL一路走来 传统的关系型数据库有着悠久的历史，从上世纪60年代开始就已经在航空领域发挥作用。因为其严谨的强一致保证以及通用的关系型数据模型接口，获得了越来越多的应用，大有一统天下的气势。这期间，涌现出了一批佼佼者，其中有优秀的商业化数据库如Oracle，DB2，SQL Server等，也有我们耳熟能详的开源数据库MySQL及PostgreSQL。这里不严谨的将这类传统数据库统称为SQL数..."
+      },
+      {
+        "title": "B+树数据库加锁历史",
+        "url": "https://catkang.github.io/2022/01/27/btree-lock.html",
+        "date": "2022-01-27",
+        "category": "数据库",
+        "tags": [
+          "Database，Concurrency Control"
+        ],
+        "summary": "前言： 作为数据库最重要的组成之一，并发控制一直是数据库领域研究的热点和工程实现中的重点和难点。之前已经在文章《浅析数据库并发控制》[4]中介绍了并发控制的概念和实现方式。简单的说，就是要实现：**并行执行的事务可以满足某一隔离性级别[5]的正确性要求**。要满足正确性要求就一定需要对事务的操作做冲突检测，对有冲突的事务进行延后或者丢弃。根据检测冲突的时机不同可以简单分成三类： - 在操作甚至是事..."
+      },
+      {
+        "title": "B+树数据库故障恢复概述",
+        "url": "https://catkang.github.io/2022/10/05/btree-crash-recovery.html",
+        "date": "2022-10-05",
+        "category": "数据库",
+        "tags": [
+          "Database，Crash Recovery"
+        ],
+        "summary": "前言 故障恢复是数据库中重要的组成部分，为了在故障发生时，有足够的信息将数据库还原到正确的状态，DB需要在正常运行过程中就维护一些冗余的数据，同时还要保证数据库的**高效运行，充分利用硬件特性，支持高效的数据组织及访问模式**。数据库可能遇到的故障主要包括三种类型：Transaction Failure，包括用户主动的事务Abort，以及并发控制中遇到的如死锁错误时，数据库对所选事务的回滚；Sys..."
+      },
+      {
+        "title": "数据库故障恢复机制的前世今生",
+        "url": "https://catkang.github.io/2019/01/16/crash-recovery.html",
+        "date": "2019-01-16",
+        "category": "数据库",
+        "tags": [
+          "Database，Crash Recovery"
+        ],
+        "summary": "**背景** 在数据库系统发展的历史长河中，故障恢复问题始终伴随左右，也深刻影响着数据库结构的发展变化。通过故障恢复机制，可以实现数据库的两个至关重要的特性：Durability of Updates以及Failure Atomic，也就是我们常说的的ACID中的A和D。磁盘数据库由于其卓越的性价比一直以来都占据数据库应用的主流位置。然而，由于需要协调内存和磁盘两种截然不同的存储介质，在处理故障恢..."
+      },
+      {
+        "title": "数据库事务隔离发展历史",
+        "url": "https://catkang.github.io/2018/08/31/isolation-level.html",
+        "date": "2018-08-31",
+        "category": "数据库",
+        "tags": [
+          "Isolation Level，Transaction"
+        ],
+        "summary": "事务隔离是数据库系统设计中根本的组成部分，本文主要从标准层面来讨论隔离级别的发展历史，首先明确隔离级别划分的目标；之后概述其否定之否定的发展历程；进而引出 Adya给出的比较合理的隔离级别定义，最终总结隔离标准一路走来的思路。 目标 事务隔离是事务并发产生的直接需求，最直观的、保证正确性的隔离方式，显然是让并发的事务依次执行，或是看起来像是依次执行。但在真实的场景中，有时并不需要如此高的正确性保证..."
+      },
+      {
+        "title": "聊聊日志即数据库",
+        "url": "https://catkang.github.io/2023/11/30/single-page_recovery.html",
+        "date": "2023-11-30",
+        "category": "数据库",
+        "tags": [
+          "Database，Recovery",
+          "Restore",
+          "Aurora"
+        ],
+        "summary": "《数据库故障恢复机制的前世今生》[[1]](http://catkang.github.io/2019/01/16/crash-recovery.html)一文中介绍过，由于磁盘的的顺序访问性能远好于随机访问，数据库设计中通常都会采用WAL的方式，将随机访问的数据库请求转换为顺序的日志IO，并通过Buffer Pool尽量的合并并推迟真正的数据修改落盘。如果发生故障，可以通过日志的重放恢复故障发生..."
+      }
+    ],
+    "未分类": [
+      {
+        "title": "CloudJump II：云数据库在共享存储场景下的优化与实现（发表于SIGMOD 2025）",
+        "url": "https://catkang.github.io/2025/07/31/cloudjump.html",
+        "date": "2025-07-31",
+        "category": "未分类",
+        "tags": [],
+        "summary": "云原生数据库的一个核心理念是计算与存储的解耦（计存分离），这种解耦将数据库系统划分为两个独立的层次：**计算层**（负责查询和事务处理）和**存储层**（管理日志和数据页的持久化），两者可以各自独立扩展。在《CloudJump: Optimizing Cloud Database For Cloud Storage》论文中，我们分析过计存分离架构下，存储层从本地存储转向云存储后，这种介质变化对数据..."
+      }
+    ]
+  },
+  "posts": [
+    {
+      "title": "聊聊数据库跨地域",
+      "url": "https://catkang.github.io/2026/02/13/gdn.html",
+      "date": "2026-02-13",
+      "category": "数据库",
+      "tags": [
+        "Database",
+        "GDN",
+        "跨地域",
+        "分布式数据库",
+        "Spanner",
+        "CockroachDB",
+        "Aurora DSQL",
+        "全球数据库"
+      ],
+      "summary": "需求 随着国际业务的普及，以及对服务实时性和数据安全性的要求日益增强，越来越多的业务需要跨地域提供服务，作为其数据基座的数据库，也遇到了越来越多的跨地域部署的需求。在PolarDB MySQL GDN(Global Database Network)[[1]](https://help.aliyun.com/zh/polardb/polardb-for-mysql/user-guide/globa..."
+    },
+    {
+      "title": "庖丁解InnoDB之Lock",
+      "url": "https://catkang.github.io/2025/09/30/mysql-lock.html",
+      "date": "2025-09-30",
+      "category": "庖丁解InnoDB",
+      "tags": [
+        "Database",
+        "MySQL",
+        "InnoDB",
+        "Lock",
+        "Isolation",
+        "PolarDB"
+      ],
+      "summary": "隔离性（Isolation）是关系型数据库非常重要的特性。顾名思义，隔离性是要对并发运行在数据库上的事务做隔离，其本质是在数据库并发性能和事务正确性之间做权衡，为此数据库通常会提供不同程度的隔离级别供用户选择。而并发控制，就是保证不同隔离级别正确性的内部实现机制。Lock是现代数据库，尤其是单机数据库中最常见的并发控制手段，InnoDB采用的就是基于Lock的并发控制。本文将介绍InnoDB所支持..."
+    },
+    {
+      "title": "CloudJump II：云数据库在共享存储场景下的优化与实现（发表于SIGMOD 2025）",
+      "url": "https://catkang.github.io/2025/07/31/cloudjump.html",
+      "date": "2025-07-31",
+      "category": "未分类",
+      "tags": [],
+      "summary": "云原生数据库的一个核心理念是计算与存储的解耦（计存分离），这种解耦将数据库系统划分为两个独立的层次：**计算层**（负责查询和事务处理）和**存储层**（管理日志和数据页的持久化），两者可以各自独立扩展。在《CloudJump: Optimizing Cloud Database For Cloud Storage》论文中，我们分析过计存分离架构下，存储层从本地存储转向云存储后，这种介质变化对数据..."
+    },
+    {
+      "title": "庖丁解InnoDB之B+Tree",
+      "url": "https://catkang.github.io/2025/03/03/mysql-btree.html",
+      "date": "2025-03-03",
+      "category": "庖丁解InnoDB",
+      "tags": [
+        "Database，MySQL，InnoDB，B+Tree，Index，PolarDB"
+      ],
+      "summary": "InnoDB采用B+Tree来维护数据，处于非常核心的位置，可以说InnoDB中最重要的并发控制及故障恢复都是围绕着B+Tree来实现的。B+Tree本身是非常基础且成熟的数据结构，但在InnoDB这样一个成熟的工业产品里，面对的是复杂的用户场景，多样的需求，高性能高稳定的要求，以及长达几十年的代码积累，除此之外，InnoDB中的B+Tree在实现上并没有一个清晰的接口分层，这些都让这部分的代码显..."
+    },
+    {
+      "title": "聊聊日志即数据库",
+      "url": "https://catkang.github.io/2023/11/30/single-page_recovery.html",
+      "date": "2023-11-30",
+      "category": "数据库",
+      "tags": [
+        "Database，Recovery",
+        "Restore",
+        "Aurora"
+      ],
+      "summary": "《数据库故障恢复机制的前世今生》[[1]](http://catkang.github.io/2019/01/16/crash-recovery.html)一文中介绍过，由于磁盘的的顺序访问性能远好于随机访问，数据库设计中通常都会采用WAL的方式，将随机访问的数据库请求转换为顺序的日志IO，并通过Buffer Pool尽量的合并并推迟真正的数据修改落盘。如果发生故障，可以通过日志的重放恢复故障发生..."
+    },
+    {
+      "title": "庖丁解InnoDB之Buffer Pool",
+      "url": "https://catkang.github.io/2023/08/08/mysql-buffer-pool.html",
+      "date": "2023-08-08",
+      "category": "庖丁解InnoDB",
+      "tags": [
+        "Database",
+        "MySQL",
+        "InnoDB",
+        "Buffer Pool",
+        "PolarDB"
+      ],
+      "summary": "Buffer Pool是InnoDB中非常重要的组成部分，也是数据库用户最关心的组件之一。Buffer Pool的基本功能并不复杂，设计实现也比较清晰，但作为一个有几十年历史的工业级数据库产品，不可避免的在代码上融合了越来越多的功能，以及很多细节的优化，从而显得有些臃肿和晦涩。本文希望聚焦在Buffer Pool的本职功能上，从其提供的接口、内存组织方式、Page获取、刷脏等方面进行介绍，其中会穿..."
+    },
+    {
+      "title": "B+树数据库故障恢复概述",
+      "url": "https://catkang.github.io/2022/10/05/btree-crash-recovery.html",
+      "date": "2022-10-05",
+      "category": "数据库",
+      "tags": [
+        "Database，Crash Recovery"
+      ],
+      "summary": "前言 故障恢复是数据库中重要的组成部分，为了在故障发生时，有足够的信息将数据库还原到正确的状态，DB需要在正常运行过程中就维护一些冗余的数据，同时还要保证数据库的**高效运行，充分利用硬件特性，支持高效的数据组织及访问模式**。数据库可能遇到的故障主要包括三种类型：Transaction Failure，包括用户主动的事务Abort，以及并发控制中遇到的如死锁错误时，数据库对所选事务的回滚；Sys..."
+    },
+    {
+      "title": "B+树数据库加锁历史",
+      "url": "https://catkang.github.io/2022/01/27/btree-lock.html",
+      "date": "2022-01-27",
+      "category": "数据库",
+      "tags": [
+        "Database，Concurrency Control"
+      ],
+      "summary": "前言： 作为数据库最重要的组成之一，并发控制一直是数据库领域研究的热点和工程实现中的重点和难点。之前已经在文章《浅析数据库并发控制》[4]中介绍了并发控制的概念和实现方式。简单的说，就是要实现：**并行执行的事务可以满足某一隔离性级别[5]的正确性要求**。要满足正确性要求就一定需要对事务的操作做冲突检测，对有冲突的事务进行延后或者丢弃。根据检测冲突的时机不同可以简单分成三类： - 在操作甚至是事..."
+    },
+    {
+      "title": "PolarDB闪回查询，让历史随时可见",
+      "url": "https://catkang.github.io/2021/11/25/backquery.html",
+      "date": "2021-11-25",
+      "category": "数据库",
+      "tags": [
+        "Database",
+        "MySQL",
+        "InnoDB",
+        "PolarDB"
+      ],
+      "summary": "通过数据库我们我们可以方便的查询当前的数据。但当我们需要查询之前几秒，几个小时甚至几天的数据时，就变的非常复杂。比如需要从某个备份开始经过漫长的redo回放，得到一个对应历史时间的新实例，然后在这个新实例上进行查询。如果需要查询多个不同时间点的数据，那就更复杂了。有没有办法能够让数据库像当前查询一样实时的查询任意时间点的数据呢？ PolarDB Flashback Query使用 PolarDB最..."
+    },
+    {
+      "title": "庖丁解InnoDB之Undo LOG",
+      "url": "https://catkang.github.io/2021/10/30/mysql-undo.html",
+      "date": "2021-10-30",
+      "category": "庖丁解InnoDB",
+      "tags": [
+        "Database",
+        "MySQL",
+        "InnoDB",
+        "UNDO"
+      ],
+      "summary": "Undo Log是InnoDB十分重要的组成部分，它的作用横贯InnoDB中两个最主要的部分，并发控制（Concurrency Control）和故障恢复（Crash Recovery），InnoDB中Undo Log的实现亦日志亦数据。本文将从其作用、设计思路、记录内容、组织结构，以及各种功能实现等方面，整体介绍InnoDB中的Undo Log，文章会深入一定的代码实现，但在细节上还是希望用抽象..."
+    },
+    {
+      "title": "NewSQL数据库概述",
+      "url": "https://catkang.github.io/2020/12/01/newsql.html",
+      "date": "2020-12-01",
+      "category": "数据库",
+      "tags": [
+        "Database",
+        "NewSQL"
+      ],
+      "summary": "NewSQL一路走来 传统的关系型数据库有着悠久的历史，从上世纪60年代开始就已经在航空领域发挥作用。因为其严谨的强一致保证以及通用的关系型数据模型接口，获得了越来越多的应用，大有一统天下的气势。这期间，涌现出了一批佼佼者，其中有优秀的商业化数据库如Oracle，DB2，SQL Server等，也有我们耳熟能详的开源数据库MySQL及PostgreSQL。这里不严谨的将这类传统数据库统称为SQL数..."
+    },
+    {
+      "title": "庖丁解InnoDB之REDO LOG",
+      "url": "https://catkang.github.io/2020/02/27/mysql-redo.html",
+      "date": "2020-02-27",
+      "category": "庖丁解InnoDB",
+      "tags": [
+        "Database",
+        "MySQL",
+        "InnoDB",
+        "REDO"
+      ],
+      "summary": "数据库故障恢复机制的前世今生中介绍了，磁盘数据库为了在保证数据库的原子性(A, Atomic) 和持久性(D, Durability)的同时，还能以灵活的刷盘策略来充分利用磁盘顺序写的性能，会记录REDO和UNDO日志，即**ARIES**方法。本文将重点介绍REDO LOG的作用，记录的内容，组织结构，写入方式等内容，希望读者能够更全面准确的理解REDO LOG在InnoDB中的位置。本文基于M..."
+    },
+    {
+      "title": "数据库故障恢复机制的前世今生",
+      "url": "https://catkang.github.io/2019/01/16/crash-recovery.html",
+      "date": "2019-01-16",
+      "category": "数据库",
+      "tags": [
+        "Database，Crash Recovery"
+      ],
+      "summary": "**背景** 在数据库系统发展的历史长河中，故障恢复问题始终伴随左右，也深刻影响着数据库结构的发展变化。通过故障恢复机制，可以实现数据库的两个至关重要的特性：Durability of Updates以及Failure Atomic，也就是我们常说的的ACID中的A和D。磁盘数据库由于其卓越的性价比一直以来都占据数据库应用的主流位置。然而，由于需要协调内存和磁盘两种截然不同的存储介质，在处理故障恢..."
+    },
+    {
+      "title": "浅析数据库并发控制机制",
+      "url": "https://catkang.github.io/2018/09/19/concurrency-control.html",
+      "date": "2018-09-19",
+      "category": "数据库",
+      "tags": [
+        "Concurrency Control，Transaction",
+        "Database"
+      ],
+      "summary": "数据库事务隔离发展标准一文中，从标准制定的角度介绍了数据库的隔离级别，介绍了Read Uncommitted、Read Committed、Repeatable Read、Serializable等隔离级别的定义。本文就来看看究竟有哪些常见的实现事务隔离的机制，称之为并发控制（Concurrency Control）。 原理 所谓**并发控制，就是保证并发执行的事务在某一隔离级别上的正确执行的机制..."
+    },
+    {
+      "title": "数据库事务隔离发展历史",
+      "url": "https://catkang.github.io/2018/08/31/isolation-level.html",
+      "date": "2018-08-31",
+      "category": "数据库",
+      "tags": [
+        "Isolation Level，Transaction"
+      ],
+      "summary": "事务隔离是数据库系统设计中根本的组成部分，本文主要从标准层面来讨论隔离级别的发展历史，首先明确隔离级别划分的目标；之后概述其否定之否定的发展历程；进而引出 Adya给出的比较合理的隔离级别定义，最终总结隔离标准一路走来的思路。 目标 事务隔离是事务并发产生的直接需求，最直观的、保证正确性的隔离方式，显然是让并发的事务依次执行，或是看起来像是依次执行。但在真实的场景中，有时并不需要如此高的正确性保证..."
+    },
+    {
+      "title": "如何验证线性一致性",
+      "url": "https://catkang.github.io/2018/07/30/test-linearizability.html",
+      "date": "2018-07-30",
+      "category": "一致性",
+      "tags": [
+        "线性一致性",
+        "Linearizability",
+        "分布式系统",
+        "WG",
+        "WGL",
+        "P-compositionality"
+      ],
+      "summary": "线性一致性（Linearizability）是分布式系统中常见的一致性保证。那么如何验证系统是否正确地提供了线性一致性服务呢？本文希望从‘什么是线性一致性’，‘如何验证线性一致性’，问题复杂度，常见的通用算法，以及工程实现五个部分，直观、易懂地回答这个问题。 什么是线性一致性 MAURICE P. HERLIHY 和 JEANNETTE M. WING曾在“ Linearizability: A ..."
+    },
+    {
+      "title": "从Paxos到区块链",
+      "url": "https://catkang.github.io/2018/03/24/paxos-pbft-pow.html",
+      "date": "2018-03-24",
+      "category": "一致性",
+      "tags": [
+        "Paxos",
+        "PBFT",
+        "区块链，一致性，共识算法，工作量证明，Pow"
+      ],
+      "summary": "本文希望探讨从Paxos到PBFT（Practical Byzantine Fault Tolerance），再到区块链中共识算法Pow的关系和区别，并期望摸索其中一脉相承的思维脉络。 **问题** 首先需要明白，我们常说的一致性协议或共识算法所针对的问题，简单的说就是要保证： **即使发生网络或节点异常，整个集群依然能够像单机一样提供一致的服务，即在每次成功操作时都可以看到其之前的所有成功操作按..."
+    },
+    {
+      "title": "Zeppelin不是飞艇之元信息节点",
+      "url": "https://catkang.github.io/2018/01/19/zeppelin-meta.html",
+      "date": "2018-01-19",
+      "category": "存储",
+      "tags": [
+        "Zeppelin",
+        "KV存储，分布式存储"
+      ],
+      "summary": "从Zeppelin不是飞艇之概述的介绍中我们知道元信息节点Meta以集群的形式向整个Zeppelin提供元信息的维护和提供服务。可以说Meta集群是Zeppelin的大脑，是所有元信息变化的发起者。每个Meta节点包含一个Floyd实例，从而也是Floyd的一个节点，Meta集群依赖Floyd提供一致性的内容读写。本文将从角色、线程模型、数据结构、选主与分布式锁、集群扩容缩容及成员变化几个方面详细..."
+    },
+    {
+      "title": "Zeppelin不是飞艇之存储节点",
+      "url": "https://catkang.github.io/2018/01/16/zeppelin-node.html",
+      "date": "2018-01-16",
+      "category": "存储",
+      "tags": [
+        "Zeppelin",
+        "KV存储，分布式存储"
+      ],
+      "summary": "通过上一篇Zeppelin不是飞艇之概述的介绍，相信读者已经对Zeppelin有了大致的了解，这篇就将详细介绍其中的存储节点集群（Node Server）。存储节点负责最终的数据存储，每个Node Server会负责多个分片副本，每个分片副本对应一个DB和一个Binlog。同一分片的不同副本之间会建立主从关系，进行数据同步，并在主节点异常时自动切换。本文将从请求处理、线程模型、元信息变化、副本同步..."
+    },
+    {
+      "title": "Zeppelin不是飞艇之概述",
+      "url": "https://catkang.github.io/2018/01/07/zeppelin-overview.html",
+      "date": "2018-01-07",
+      "category": "存储",
+      "tags": [
+        "Zeppelin",
+        "KV存储，分布式存储"
+      ],
+      "summary": "过去的一年多的时间中，大部分的工作都围绕着Zeppelin这个项目展开，经历了Zeppelin的从无到有，再到逐步完善稳定。见证了Zeppelin的成长的同时，Zeppelin也见证了我的积累进步。对我而言，Zeppelin就像是孩提时代一同长大的朋友，在无数次的游戏和谈话中，交换对未知世界的感知，碰撞对未来的憧憬，然后刻画出更好的彼此。这篇博客中就向大家介绍下我的这位老朋友。Zeppelin是一..."
+    },
+    {
+      "title": "浅谈分布式存储系统数据分布方法",
+      "url": "https://catkang.github.io/2017/12/17/data-placement.html",
+      "date": "2017-12-17",
+      "category": "存储",
+      "tags": [
+        "分布式存储，数据分布，数据定位，数据查找，lookup service，location service，hash table，consistent hash"
+      ],
+      "summary": "分布式存储系统中面临着的首要问题就是如何将大量的数据分布在不同的存储节点上，无论上层接口是KV存储、对象存储、块存储、亦或是列存储，在这个问题上大体是一致的。本文将介绍在分布式存储系统中做数据分布目标及可选的方案，并试着总结他们之间的关系及权衡。 **指标** 这里假设目标数据是以key标识的数据块或对象，在一个包含多个存储节点的集群中，数据分布算法需要为每一个给定的key指定一个或多个对应的存储..."
+    },
+    {
+      "title": "Why Raft never commits log entries from previous terms directly",
+      "url": "https://catkang.github.io/2017/11/30/raft-safty.html",
+      "date": "2017-11-30",
+      "category": "一致性",
+      "tags": [
+        "一致性，Consistency",
+        "Raft",
+        "Quorum"
+      ],
+      "summary": "熟悉Raft的读者知道，Raft在子问题Safty中，限制不能简单的通过收集大多数（Quorum）的方式提交之前term的entry。论文中也给出详细的例子说明违反这条限制可能会破坏算法的Machine Safety Property，即任何一个log位置只能有一个值被提交到状态机。如下图所示： 简单的说，c过程中如果S1简单的通过判断大多数节点在index为2的位置的AppendEntry成功来..."
+    },
+    {
+      "title": "Ceph Monitor的Paxos实现",
+      "url": "https://catkang.github.io/2017/11/21/ceph-paxos.html",
+      "date": "2017-11-21",
+      "category": "一致性",
+      "tags": [
+        "Ceph",
+        "Ceph Monitor",
+        "Paxos",
+        "源码",
+        "实现",
+        "源码介绍",
+        "分布式存储",
+        "元信息管理",
+        "一致性协议"
+      ],
+      "summary": "Ceph Monitor作为Ceph服务中的元信息管理角色，肩负着提供高可用的集群配置的维护及提供责任。Ceph选择了实现自己的Multi-Paxos版本来保证Monitor集群对外提供一致性的服务。Ceph Multi-Paxos将上层的元数据修改当成一次提交扩散到整个集群，Ceph中简单的用Paxos来指代Multi-Paxos，我们也沿用这一指代。本文将介绍Ceph Paxos的算法细节，讨..."
+    },
+    {
+      "title": "Zookeeper vs Chubby",
+      "url": "https://catkang.github.io/2017/10/10/zookeeper-vs-chubby.html",
+      "date": "2017-10-10",
+      "category": "一致性",
+      "tags": [
+        "Zookeeper",
+        "Chubby",
+        "论文",
+        "分布式锁",
+        "锁服务",
+        "一致性"
+      ],
+      "summary": "上一篇博客Chubby的锁服务中已经对Chubby的设计和实现做了比较详细的实现，但由于其闭源身份，工程中接触比较多的还是它的一个非常类似的开源实现Zookeeper。Zookeeper作为后起之秀，应该对Chubby有很多的借鉴，他们有众多的相似之处，比如都可以提供分布式锁的功能；都提供类似于UNIX文件系统的数据组织方式；都提供了事件通知机制Event或Watcher；都在普通节点的基础上提供..."
+    },
+    {
+      "title": "Chubby的锁服务",
+      "url": "https://catkang.github.io/2017/09/29/chubby.html",
+      "date": "2017-09-29",
+      "category": "一致性",
+      "tags": [
+        "Chubby",
+        "Lock",
+        "Distribute Lock",
+        "Consistency",
+        "分布式锁，锁服务",
+        "论文，介绍"
+      ],
+      "summary": "最近在完成Zeppelin的中心节点重构的过程中，反思了我们对分布式锁的实现和使用。因此重读了Chubby论文The Chubby lock service for loosely-coupled distributed systems，收益良多的同时也对其中的细节有了更感同身受的理解，论文中将众多的设计细节依次罗列，容易让读者产生眼花缭乱之感。本文希望能够更清晰的展现Chubby的设计哲学和实现..."
+    },
+    {
+      "title": "Raft和它的三个子问题",
+      "url": "https://catkang.github.io/2017/06/30/raft-subproblem.html",
+      "date": "2017-06-30",
+      "category": "一致性",
+      "tags": [
+        "一致性，Consistency",
+        "Raft",
+        "Quorum"
+      ],
+      "summary": "这篇文章来源于一个经常有人困惑的问题：Quorum与Paxos，Raft等一致性协议有什么区别，这个问题的答案本身很简单：**一致性协议大多使用了Quorum机制，但仅仅有Quorum(R+W>N)机制是保证不了一致性的**。本文计划延伸这个问题，以Raft为例回答一个完善的一致性协议拥有包括Quorum在内的那些机制，试着说明这些机制的完备以及其中每一项的不可或缺。 **一致性** 要回答这个问..."
+    },
+    {
+      "title": "LSM upon SSD",
+      "url": "https://catkang.github.io/2017/04/30/lsm-upon-ssd.html",
+      "date": "2017-04-30",
+      "category": "存储",
+      "tags": [
+        "lsm",
+        "leveldb",
+        "rocksdb",
+        "ssd"
+      ],
+      "summary": "近年来，以LevelDB和Rocksdb为代表的LSM（Log-Structured Merge-Tree）存储引擎凭借其优异的写性能及不俗的读性能成为众多分布式组件的存储基石，包括我们近两年开发的类Redis大容量存储Pika和分布式KV存储Zeppelin，在享受LSM的高效的同时也开始逐渐体会到它的不足，比如它在大Value场景下的差强人意以及对磁盘的反复擦写。正如之前的博客庖丁解Level..."
+    },
+    {
+      "title": "对象存储面面观之Haystack",
+      "url": "https://catkang.github.io/2017/03/20/haystack.html",
+      "date": "2017-03-20",
+      "category": "存储",
+      "tags": [
+        "haystack",
+        "object store，对象存储，论文"
+      ],
+      "summary": "英文中有句谚语叫做“Find a needle in haystack”，对应中文的“大海捞针”。Facebook将自己的图片存储系统称为Haystack，也非常形象的暗示了其所面对的挑战和目标场景。 **场景与目标** 正如上面的谚语所暗示的那样，Haystack面对的是海量的社交图片，具有特殊的数据场景： - 海量； - 一次写，多次读，从不修改，很少删除； - 长尾效应：社交图片特有的，会有..."
+    },
+    {
+      "title": "庖丁解LevelDB之Iterator",
+      "url": "https://catkang.github.io/2017/02/12/leveldb-iterator.html",
+      "date": "2017-02-12",
+      "category": "庖丁解LevelDB",
+      "tags": [
+        "leveldb",
+        "nosql，存储引擎，源码，source code",
+        "迭代器，Iterator"
+      ],
+      "summary": "通过之前对LevelDB的整体流程，数据存储以及元信息管理的介绍，我们已经基本完整的了解了LevelDB。接下来两篇要介绍的内容并不是LevelDB的基本组成，却是让LevelDB更优雅高效的重点和体现，Iterator就是这样一种存在。 **作用** 正如庖丁解LevelDB之数据存储中介绍的，LevelDB各个组件用不同的格式进行数据存取。在LevelDB内部、外部、各个不同阶段又不可避免的需..."
+    },
+    {
+      "title": "庖丁解LevelDB之版本控制",
+      "url": "https://catkang.github.io/2017/02/03/leveldb-version.html",
+      "date": "2017-02-03",
+      "category": "庖丁解LevelDB",
+      "tags": [
+        "leveldb",
+        "nosql，存储引擎，源码，source code，版本，Version，元信息"
+      ],
+      "summary": "版本控制或元信息管理，是LevelDB中比较重要的内容。本文首先介绍其在整个LevelDB中不可替代的作用；之后从代码结构引出其实现方式；最后由几个主要的功能点入手详细介绍元信息管理是如何提供不可或缺的支撑的。 **作用** 通过之前的博客，我们已经了解到了LevelDB整个的工作过程以及从Memtable，Log到SST文件的存储方式。那么问题来了，LevelDB如何能够知道每一层有哪些SST文..."
+    },
+    {
+      "title": "庖丁解LevelDB之数据存储",
+      "url": "https://catkang.github.io/2017/01/17/leveldb-data.html",
+      "date": "2017-01-17",
+      "category": "庖丁解LevelDB",
+      "tags": [
+        "leveldb",
+        "nosql，存储引擎，源码，source code",
+        "数据格式，数据存储，数据"
+      ],
+      "summary": "作为一个存储引擎，数据存储自然是LevelDB重中之重的需求。我们已经在庖丁解LevelDB之概览中介绍了Leveldb的使用流程，以及数据在Memtable，Immutable，SST文件之间的流动。本文就将详细的介绍LevelDB的数据存储方式，包括数据在不同介质中的存储方式，数据结构及设计思路。 **Memtable** Memtable对应Leveldb中的内存数据，LevelDB的写入操..."
+    },
+    {
+      "title": "庖丁解LevelDB之概览",
+      "url": "https://catkang.github.io/2017/01/07/leveldb-summary.html",
+      "date": "2017-01-07",
+      "category": "庖丁解LevelDB",
+      "tags": [
+        "leveldb",
+        "nosql，存储引擎，源码，source code",
+        "介绍，概述"
+      ],
+      "summary": "LevelDB是Google传奇工程师Jeff Dean和Sanjay Ghemawat开源的KV存储引擎，无论从设计还是代码上都可以用精致优雅来形容，非常值得细细品味。接下来就将用几篇博客来由表及里的介绍LevelDB的设计和代码细节。本文将从设计思路、整体结构、读写流程、压缩流程几个方面来进行介绍，从而能够对LevelDB有一个整体的感知。 **设计思路** LevelDB的数据是存储在磁盘上..."
+    },
+    {
+      "title": "从Ceph看分布式系统故障检测",
+      "url": "https://catkang.github.io/2016/09/23/ceph-failure-detection.html",
+      "date": "2016-09-23",
+      "category": "存储",
+      "tags": [
+        "Ceph",
+        "Ceph Monitor",
+        "Source",
+        "源码",
+        "分布式系统",
+        "存活检测",
+        "心跳",
+        "故障检测"
+      ],
+      "summary": "节点的故障检测是分布式系统无法回避的问题，集群需要感知节点的存活，并作出适当的调整。通常我们采用心跳的方式来进行故障检测，并认为能正常与外界保持心跳的节点便能够正常提供服务。一个好的故障检测策略应该能够做到： - **及时**：节点发生异常如宕机或网络中断时，集群可以在可接受的时间范围内感知； - **适当的压力**：包括对节点的压力，和对网络的压力； - **容忍网络抖动** - **扩散机制*..."
+    },
+    {
+      "title": "Ceph Monitor实现",
+      "url": "https://catkang.github.io/2016/08/20/ceph-monitor-implementation.html",
+      "date": "2016-08-20",
+      "category": "",
+      "tags": [
+        "Ceph",
+        "Ceph Monitor",
+        "Paxos",
+        "源码",
+        "实现",
+        "源码介绍",
+        "分布式存储",
+        "元信息管理",
+        "一致性协议"
+      ],
+      "summary": "在之前的一篇博客Ceph Monitor and Paxos中介绍了Ceph Monitor利用改进的Paxos算法，以集群的形式对外提供元信息管理服务。本文讲分别从Ceph Monitor的架构，其初始化过程、选主过程、Recovery过程、读写过程、状态转换六个方面介绍Ceph Monitor的实现。本文假设读者已经了解Paxos算法的基本过程，了解Prepare、Promise、Commit..."
+    },
+    {
+      "title": "Ceph Monitor and Paxos",
+      "url": "https://catkang.github.io/2016/07/17/ceph-monitor-and-paxos.html",
+      "date": "2016-07-17",
+      "category": "",
+      "tags": [
+        "Ceph",
+        "Ceph Monitor",
+        "Paxos",
+        "源码",
+        "实现",
+        "源码介绍",
+        "分布式存储",
+        "元信息管理",
+        "一致性协议"
+      ],
+      "summary": "Ceph Monitor集群作为Ceph中的元信息管理组件，基于改进的Paxos算法，对外提供一致性的元信息访问和更新服务。本文首先介绍Monitor在整个系统中的意义以及其反映出来的设计思路；之后更进一步介绍Monitor的任务及所维护数据；最后介绍其基于Paxos的实现细节和改进点。 **定位** RADOS毋庸置疑是Ceph架构中的重中之重，Ceph所提供的对象存储，块存储及文件存储都无一例..."
+    },
+    {
+      "title": "Dynamo论文介绍",
+      "url": "https://catkang.github.io/2016/05/27/dynamo.html",
+      "date": "2016-05-27",
+      "category": "存储",
+      "tags": [
+        "Dynamo",
+        "论文",
+        "NOSQL",
+        "存储"
+      ],
+      "summary": "Dynamo是Amazon开发的分布式存储系统，本文是阅读Dynamo论文后的总结：Dynamo: Amazon’s Highly Available Key-value Store。将从背景、定位、简介、问题及解决方案几个方面介绍Dynamo的整体设计思路。 **背景** Dynamo是在Amazon所处的应用环境中因运而生的，其需要面对的问题和场景在互联网的业务中也是类似的： - 大多数场景并..."
+    },
+    {
+      "title": "Redis Cluster 实现",
+      "url": "https://catkang.github.io/2016/05/08/redis-cluster-source.html",
+      "date": "2016-05-08",
+      "category": "存储",
+      "tags": [
+        "Redis",
+        "Redis Cluster",
+        "Source",
+        "源码"
+      ],
+      "summary": "本文将从设计思路，功能实现，源码几个方面介绍Redis Cluster。假设读者已经了解Redis Cluster的使用方式。 **简介** Redis Cluster作为Redis的分布式实现，主要做了两个方面的事情： **1，数据分片** - Redis Cluster将数据按key哈希到16384个slot上 - Cluster中的不同节点负责一部分slot **2，故障恢复** - Clu..."
+    },
+    {
+      "title": "Ceilometer 源码学习 - Notification Agent",
+      "url": "https://catkang.github.io/2015/11/16/source-ceilometer-notification.html",
+      "date": "2015-11-16",
+      "category": "",
+      "tags": [
+        "Ceilometer",
+        "Source",
+        "Notification"
+      ],
+      "summary": "简介 Ceilometer有两种数据收集方式，Ceilometer 源码学习 - Polling Agent中提到了主动调用api的Polling方式。显而易见的，这种方式会增加其他组件的负担。所以更优雅也是更推荐的方式是由Notification Agent监听消息队列并收集需要的数据。 这篇文章就将介绍Notification Agent的功能和实现。 需求导向 一句话来概括Notificat..."
+    },
+    {
+      "title": "Ceilometer 源码学习 - Polling Agent",
+      "url": "https://catkang.github.io/2015/11/03/source-ceilometer-polling.html",
+      "date": "2015-11-03",
+      "category": "",
+      "tags": [
+        "Ceilometer",
+        "Source"
+      ],
+      "summary": "简介 Ceilometer是Openstack中用于数据采集的基础设施，包括多个组件：Central Agent，Compute Agent，Notification Agent，Collector等。其中Central Agent和Compute Agent分别运行在Controller和Compute机器上，通过定期调用其他服务的api来完成数据采集。由于二者的区别只是所负责的数据来源，这里我..."
+    },
+    {
+      "title": "从配置文件到分布式配置管理QConf",
+      "url": "https://catkang.github.io/2015/06/23/qconf.html",
+      "date": "2015-06-23",
+      "category": "存储",
+      "tags": [
+        "QConf",
+        "配置管理"
+      ],
+      "summary": "QConf是奇虎360广泛使用的配置管理服务，现已开源： QConf Source Code。欢迎大家关注使用。 本文从设计初衷，架构实现，使用情况及相关产品比较四个方面进行介绍。 设计初衷 在分布式环境中，出于负载、容错等种种原因，几乎所有的服务都需要在不同的机器节点上部署多个实例。同时，业务项目中总少不了各种类型的配置文件。这种情况下，有时仅仅是一个配置内容的修改，便需要重新进行代码提交svn..."
+    }
+  ]
+}
