@@ -110,3 +110,21 @@ PolarDB通过行列混存技术实现高性能的HTAP能力：
 - GitHub: [CatKang](https://github.com/CatKang)
 - 博客源码托管在[Github](https://github.com/CatKang/catkang.github.io)上
 - 本博客使用[yansu](http://yansu.org/index.html)的模板
+
+
+
+### AI Skill 使用
+
+本博客支持通过 AI Skill 进行文章检索和阅读：
+
+- **Skill 名称**: `blog-memories`
+- **功能**: 帮助用户检索和阅读 CatKang 技术博客中的文章
+- **触发关键词**: "CatKang的博客"、"CatKang的文章"、"CatKang怎么说"、"CatKang写的"、"CatKang关于" 等
+- **涵盖主题**: 数据库、存储引擎、分布式系统、LevelDB、InnoDB、故障恢复、事务隔离、并发控制、一致性协议、Raft、Paxos 等
+- **使用方法**: 在支持该 Skill 的 AI 助手（如 Kimi Code CLI）中直接提问，例如：
+  - "CatKang 的博客中关于故障恢复的文章"
+  - "CatKang 怎么理解数据库事务隔离"
+  - "CatKang 写的 LevelDB 系列"
+  - "CatKang 关于 Raft 的文章"
+
+更多详情参考 `_agents/blog-memories/SKILL.md`
